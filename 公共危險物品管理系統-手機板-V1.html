@@ -1,0 +1,872 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>龍科廠-公共危險物品儲存量管理系統</title>
+    
+    <!-- 引入 React 和 Tailwind CSS -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Chart.js 用於繪製趨勢圖 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- 引入 SheetJS 用於 Excel 匯入匯出 -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    
+    <!-- 設定 Tailwind: Bold & High Contrast 配色 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Inter"', '"Microsoft JhengHei"', 'sans-serif'],
+                    },
+                    colors: {
+                        slate: {
+                            50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1',
+                            400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155',
+                            800: '#1e293b', 900: '#0f172a',
+                        },
+                        brand: {
+                            50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd',
+                            400: '#60a5fa', 500: '#2563eb', 600: '#1d4ed8', 700: '#1e40af',
+                            800: '#1e3a8a', 900: '#172554', 950: '#0f172a',
+                        },
+                        accent: {
+                            400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c',
+                        },
+                        danger: '#dc2626',
+                        success: '#16a34a',
+                        line: '#06C755', // LINE 官方色
+                    },
+                    boxShadow: {
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        'sharp': '0 10px 15px -3px rgba(30, 58, 138, 0.2), 0 4px 6px -2px rgba(30, 58, 138, 0.1)',
+                        'glow': '0 0 15px rgba(249, 115, 22, 0.4)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: "Inter", "Microsoft JhengHei", sans-serif;
+            background-color: #f1f5f9;
+        }
+        .table-container {
+            border-radius: 0.75rem;
+            overflow: hidden;
+            border: 1px solid #cbd5e1;
+        }
+        .table-bordered td, .table-bordered th {
+            border: 1px solid #94a3b8 !important;
+        }
+        .table-header-border th {
+             border: 1px solid #475569 !important;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #e2e8f0; }
+        ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        /* 隱藏特定容器的滾動條，但保留滾動功能 (給 Tab 用) */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        input[type="checkbox"] {
+            accent-color: #ea580c;
+            width: 1.2rem;
+            height: 1.2rem;
+            cursor: pointer;
+        }
+        
+        /* Tab 淡入動畫 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .tab-content-active {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-900 font-sans selection:bg-accent-500 selection:text-white pb-20 md:pb-0">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect, useRef, useCallback } = React;
+
+        // --- Icons ---
+        const Icon = ({ path, color = "currentColor", size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
+        );
+
+        const Save = (props) => <Icon {...props} path={<><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>} />;
+        const Trash2 = (props) => <Icon {...props} path={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></>} />;
+        const Edit = (props) => <Icon {...props} path={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>} />;
+        const Download = (props) => <Icon {...props} path={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>} />;
+        const Upload = (props) => <Icon {...props} path={<><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>} />;
+        const Filter = (props) => <Icon {...props} path={<><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></>} />;
+        const FileSpreadsheet = (props) => <Icon {...props} path={<><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></>} />;
+        const PlusCircle = (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></>} />;
+        const AlertTriangle = (props) => <Icon {...props} path={<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>} />;
+        const CheckCircle = (props) => <Icon {...props} path={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>} />;
+        const AlertCircle = (props) => <Icon {...props} path={<><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>} />;
+        const XIcon = (props) => <Icon {...props} path={<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>} />;
+        const Search = (props) => <Icon {...props} path={<><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>} />;
+        const CalendarIcon = (props) => <Icon {...props} path={<><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></>} />;
+        const MapPin = (props) => <Icon {...props} path={<><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></>} />;
+        const TrendingUp = (props) => <Icon {...props} path={<><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></>} />;
+        const Tag = (props) => <Icon {...props} path={<><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>} />;
+        const ShieldAlert = (props) => <Icon {...props} path={<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></>} />;
+        const Database = (props) => <Icon {...props} path={<><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></>} />;
+        const ChevronDown = (props) => <Icon {...props} path={<><polyline points="6 9 12 15 18 9"/></>} />;
+        const FlaskConical = (props) => <Icon {...props} path={<><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><line x1="10" y1="2" x2="14" y2="2"/><path d="M8.5 2h7"/></>} />;
+        const Share2 = (props) => <Icon {...props} path={<><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></>} />;
+        
+        // LINE SVG Icon
+        const LineIcon = ({ size = 20, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className}>
+                <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738-6.616 0-12 4.369-12 9.738 0 4.814 4.269 8.846 10.036 9.608.391.084.922.258 1.057.592.122.298.039.756-.057 1.156l-.37 2.12c-.097.558-.458 2.238 1.956 1.218 2.413-1.02 8.799-5.183 10.297-7.593 1.104-1.786 1.081-4.108 1.081-7.101zm-15.013 3.32h-3.465c-.255 0-.462-.206-.462-.462v-5.541c0-.255.207-.461.462-.461.255 0 .461.206.461.461v5.079h3.004c.255 0 .461.207.461.462 0 .256-.206.462-.461.462zm2.592 0h-.922c-.256 0-.462-.206-.462-.462v-5.541c0-.255.206-.461.462-.461h.922c.255 0 .461.206.461.461v5.541c0 .256-.206.462-.461.462zm4.843 0h-.843l-2.484-3.551v3.089c0 .256-.206.462-.461.462h-.922c-.256 0-.462-.206-.462-.462v-5.541c0-.255.206-.461.462-.461h.842l2.485 3.551v-3.09c0-.255.206-.461.462-.461h.921c.255 0 .462.206.462.461v5.541c0 .256-.207.462-.462.462zm3.367-2.678h-2.128v1.754h2.128c.256 0 .462.207.462.462 0 .256-.206.462-.462.462h-2.589c-.256 0-.462-.206-.462-.462v-5.541c0-.255.206-.461.462-.461h2.589c.256 0 .462.206.462.461 0 .255-.206.461-.462.461h-2.128v1.4h2.128c.256 0 .462.206.462.462 0 .255-.206.461-.462.461z"/>
+            </svg>
+        );
+
+        // --- 可搜尋下拉選單元件 (通用) ---
+        const SearchableSelect = React.memo(({ value, onChange, options, placeholder, icon: IconComp, onKeyDown }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const [inputValue, setInputValue] = useState(value || "");
+            const wrapperRef = useRef(null);
+
+            useEffect(() => { setInputValue(value || ""); }, [value]);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => { if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setIsOpen(false); };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, [wrapperRef]);
+
+            const safeOptions = options || [];
+            const filteredOptions = useMemo(() => {
+                const safeInput = (inputValue || "").toString().toLowerCase();
+                return safeOptions.filter(opt => opt && opt.toString().toLowerCase().includes(safeInput));
+            }, [safeOptions, inputValue]);
+
+            return (
+                <div className="relative w-full" ref={wrapperRef}>
+                    {IconComp && <IconComp className="absolute left-3 top-2.5 text-slate-500" size={18} />}
+                    <input
+                        type="text" value={inputValue}
+                        onChange={(e) => { setInputValue(e.target.value); onChange(e.target.value); setIsOpen(true); }}
+                        onFocus={() => setIsOpen(true)} onKeyDown={onKeyDown} placeholder={placeholder}
+                        className={`w-full p-2 text-sm md:text-base border border-slate-400 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white shadow-sm transition-all ${IconComp ? 'pl-10' : 'pl-3'}`}
+                        autoComplete="off"
+                    />
+                    <button type="button" onClick={() => setIsOpen(!isOpen)} className="absolute right-2 top-2.5 text-slate-500 hover:text-slate-700 transition-colors"><ChevronDown size={16} /></button>
+                    {isOpen && (
+                        <ul className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto mt-1 py-1">
+                            <li className="p-3 md:p-2 text-sm hover:bg-slate-50 cursor-pointer transition-colors text-slate-400 italic" onMouseDown={() => { setInputValue(""); onChange(""); setIsOpen(false); }}>-- 清除選擇 --</li>
+                            {filteredOptions.length > 0 ? (
+                                filteredOptions.map(opt => (
+                                    <li key={opt} className="p-3 md:p-2 text-sm hover:bg-brand-50 hover:text-brand-700 cursor-pointer transition-colors border-b border-slate-50 last:border-0" onMouseDown={() => { setInputValue(opt); onChange(opt); setIsOpen(false); }}>{opt}</li>
+                                ))
+                            ) : (<li className="p-3 text-sm text-slate-400 text-center">無符合項目</li>)}
+                        </ul>
+                    )}
+                </div>
+            );
+        });
+
+        // --- MultiSelect Dropdown (Generic) ---
+        const MultiSelectDropdown = ({ options, selected, onChange, label, placeholder = "選擇項目" }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const [searchTerm, setSearchTerm] = useState("");
+            const wrapperRef = useRef(null);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => { if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setIsOpen(false); };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, []);
+
+            useEffect(() => { if (!isOpen) setSearchTerm(""); }, [isOpen]);
+
+            const currentSelected = useMemo(() => (selected instanceof Set) ? selected : new Set(), [selected]);
+            const safeOptions = options || [];
+
+            const displayedOptions = useMemo(() => {
+                if (!searchTerm) return safeOptions;
+                return safeOptions.filter(opt => opt.toLowerCase().includes(searchTerm.toLowerCase()));
+            }, [safeOptions, searchTerm]);
+
+            const toggleOption = (option) => {
+                const newSelected = new Set(currentSelected);
+                if (newSelected.has(option)) newSelected.delete(option);
+                else newSelected.add(option);
+                onChange(newSelected);
+            };
+
+            const toggleAll = () => {
+                if (currentSelected.size === safeOptions.length) onChange(new Set());
+                else onChange(new Set(safeOptions));
+            }
+
+            let displayLabel = label;
+            if (!label) {
+                if (currentSelected.size === 0) displayLabel = placeholder;
+                else if (currentSelected.size === safeOptions.length) displayLabel = "全部選取";
+                else displayLabel = `已選 ${currentSelected.size} 項`;
+            } else {
+                 displayLabel = `${label} (${currentSelected.size === 0 ? '無' : (currentSelected.size === safeOptions.length ? '全部' : currentSelected.size)})`;
+            }
+            
+            const isFilterBar = !label;
+
+            return (
+                <div className="relative w-full" ref={wrapperRef}>
+                    <button 
+                        onClick={() => setIsOpen(!isOpen)} 
+                        className={isFilterBar 
+                            ? "w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-sm md:text-base focus:ring-2 focus:ring-brand-500 outline-none hover:bg-white transition-colors cursor-pointer text-slate-800 text-left flex justify-between items-center"
+                            : "flex items-center gap-2 bg-white border border-slate-300 text-slate-700 px-3 py-2 md:py-1.5 rounded-lg text-sm md:text-xs font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                        }
+                    >
+                        {!isFilterBar && <Filter size={14} />}
+                        <span className="truncate">{displayLabel}</span>
+                        <ChevronDown size={isFilterBar ? 16 : 14} />
+                    </button>
+                    {isOpen && (
+                        <div className="absolute right-0 md:left-0 top-full mt-2 w-full min-w-[240px] md:min-w-[200px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden flex flex-col max-h-80">
+                            <div className="p-3 md:p-2 border-b border-slate-100 bg-slate-50 flex justify-between items-center shrink-0">
+                                <span className="text-sm md:text-xs font-bold text-slate-500">選擇顯示項目</span>
+                                <button onClick={toggleAll} className="text-sm md:text-xs text-brand-600 font-bold hover:underline">
+                                    {currentSelected.size === safeOptions.length ? '取消全選' : '全選'}
+                                </button>
+                            </div>
+                            <div className="p-2 border-b border-slate-100 bg-white shrink-0">
+                                <input type="text" placeholder="搜尋選項..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full p-2 md:p-1.5 text-base md:text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} />
+                            </div>
+                            <div className="overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                {displayedOptions.length > 0 ? displayedOptions.map(opt => (
+                                    <label key={opt} className="flex items-start gap-3 md:gap-2 p-3 md:p-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors select-none border-b border-slate-50 last:border-0">
+                                        <input type="checkbox" checked={currentSelected.has(opt)} onChange={() => toggleOption(opt)} className="mt-0.5 md:mt-1 rounded border-slate-300 text-brand-600 focus:ring-brand-500 w-5 h-5 md:w-4 md:h-4 accent-brand-600 shrink-0" />
+                                        <span className="text-base md:text-sm text-slate-700 font-medium break-words whitespace-normal">{opt}</span>
+                                    </label>
+                                )) : <div className="text-center text-sm md:text-xs text-slate-400 p-4">無選項</div>}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- Constants & Configs & DB (保持不變) ---
+        const HAZARD_TYPES = ["酒精類", "第一石油類", "第二石油類", "第三石油類", "第四石油類"];
+        const SOLUBILITY_TYPES = ["水溶性", "非水溶性"];
+        const STORAGE_LOCATIONS = ["危險品庫房", "C4原膠室", "P1原膠室"];
+
+        const WAREHOUSE_STATS_CONFIG = [
+            { type: "第一石油類", items: [ { name: "添加劑", limit: 7769.00, statLimit: 200 }, { name: "乙酸乙酯", limit: 7920.00, statLimit: 200 }, { name: "丁酮", limit: 660.00, statLimit: 200 }, { name: "乙酸正丙酯(NPA)", limit: 720.00, statLimit: 200 }, { name: "C0301廢棄物(第一石油類)", limit: 9600.00, statLimit: 200 } ] },
+            { type: "第二石油類", items: [ { name: "丙二醇甲醚醋酸酯", limit: 1520.00, statLimit: 1000 }, { name: "乙酸正丁酯", limit: 7200.00, statLimit: 1000 }, { name: "正丁醇", limit: 1650.00, statLimit: 1000 }, { name: "添加劑", limit: 6203.00, statLimit: 1000 }, { name: "感壓膠", limit: 33480.00, statLimit: 1000 }, { name: "C0301廢棄物(第二石油類)", limit: 16000.00, statLimit: 1000 } ] },
+            { type: "第三石油類", items: [ { name: "添加劑", limit: 113.00, statLimit: 2000 }, { name: "UV感壓膠", limit: 0, statLimit: 2000 } ] }
+        ];
+
+        const L30_STATS_CONFIG = [
+            { type: "第一石油類", items: [ { name: "乙酸乙酯", limit: 2818.00, statLimit: 200 }, { name: "添加劑", limit: 83.00, statLimit: 200 } ] },
+            { type: "第二石油類", items: [ { name: "乙酸正丁酯", limit: 720.00, statLimit: 1000 }, { name: "丙二醇甲醚醋酸酯", limit: 760.00, statLimit: 1000 }, { name: "添加劑", limit: 47.00, statLimit: 1000 }, { name: "感壓膠", limit: 24370.00, statLimit: 1000 } ] },
+            { type: "第三石油類", items: [ { name: "添加劑", limit: 11.00, statLimit: 2000 } ] },
+            { type: "酒精類", items: [ { name: "異丙醇", limit: 320.00, statLimit: 400 } ] }
+        ];
+
+        const INITIAL_CHEMICAL_DB = {
+            "IPA(異丙醇)": { labelCategory: "異丙醇", partNo: "XS.02012.003", hazard: "第四類 易燃液體", type: "酒精類", solubility: "NA", limit: 400, flashPoint: 12.00 },
+            "乙酸乙酯(Ethyl Acetate)": { labelCategory: "乙酸乙酯", partNo: "36.10004.000", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: 200, flashPoint: -4.40 },
+            "丙二醇甲醚 Propylene glycol monomethyl ether": { labelCategory: "丙二醇甲醚醋酸酯", partNo: "", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 32.00 },
+            "乙酸正丁酯(n-Butyl acetate)": { labelCategory: "乙酸正丁酯", partNo: "36.10012.010", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 22.00 },
+            "丁酮 (Methyl ethyl ketone)": { labelCategory: "丁酮", partNo: "", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: 200, flashPoint: -9.00 },
+            "丙二醇甲醚醋酸酯（Propylene glycol monomethyl ether acetate）": { labelCategory: "丙二醇甲醚醋酸酯", partNo: "", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 42.00 },
+            "正丁醇(Butyl alcohol)": { labelCategory: "正丁醇", partNo: "", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 29.00 },
+            "乙酸正丙酯 (n-Propyl acetcate)": { labelCategory: "乙酸正丙酯(NPA)", partNo: "", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: 1000, flashPoint: 10.00 },
+            "感壓膠- RE03312": { labelCategory: "感壓膠", partNo: "36.13019.003", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 31.00 },
+            "壓敏粘合劑-SAIVINOL AT-392": { labelCategory: "添加劑", partNo: "36.13034.000", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -10.00 },
+            "壓敏粘合劑-SAIVINOL PL-7930": { labelCategory: "添加劑", partNo: "36.13043.000", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -10.00 },
+            "壓敏粘合劑-SAIVINOL PL-0528": { labelCategory: "添加劑", partNo: "36.13051.000", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -10.00 },
+            "感壓膠(RE03038)": { labelCategory: "感壓膠", partNo: "36.13060.000", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 31.00 },
+            "壓敏粘合劑-SAIVINOL PL-7701": { labelCategory: "添加劑", partNo: "36.13061.000", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -10.00 },
+            "固化劑-SAIVINOL HARDENER AL": { labelCategory: "添加劑", partNo: "36.14011.000", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -5.00 },
+            "固化劑-AD75": { labelCategory: "添加劑", partNo: "36.14012.000", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 53.00 },
+            "CA-190T": { labelCategory: "添加劑", partNo: "36.14013.000", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: 4.00 },
+            "硬化劑-HE-3110": { labelCategory: "添加劑", partNo: "36.14015.010", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -4.40 },
+            "固化劑-SAIVINOL HARDENER M-2": { labelCategory: "添加劑", partNo: "36.14016.000", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: 5.00 },
+            "固化劑-SAIVINOL HARDENER K-904B": { labelCategory: "添加劑", partNo: "36.14027.000", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 27.50 },
+            "TAKENATETM D-262": { labelCategory: "添加劑", partNo: "36.14030.000", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 29.20 },
+            "固化劑-SAIVINOL HARDENER K-901": { labelCategory: "添加劑", partNo: "36.14031.000", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -4.00 },
+            "XIAMETER™ OFS-6030 矽烷": { labelCategory: "添加劑", partNo: "36.15003.000", hazard: "第四類 易燃液體", type: "第三石油類", solubility: "非水溶性", limit: 100.00 },
+            "矽烷偶合劑-SAIVINOL ADDITIVE S-1": { labelCategory: "添加劑", partNo: "36.15009.000", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: 5.00 },
+            "KR-519": { labelCategory: "添加劑", partNo: "36.15016.000", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 24.00 },
+            "KBM-803": { labelCategory: "添加劑", partNo: "36.15017.000", hazard: "第四類 易燃液體", type: "第三石油類", solubility: "非水溶性", limit: 85.00 },
+            "KBM-503": { labelCategory: "添加劑", partNo: "36.15020.000", hazard: "第四類 易燃液體", type: "第三石油類", solubility: "非水溶性", limit: 112.00 },
+            "KBM-402": { labelCategory: "添加劑", partNo: "36.15021.000", hazard: "第四類 易燃液體", type: "第三石油類", solubility: "非水溶性", limit: 94.00 },
+            "矽烷偶合劑-SAIVINOL ADDITIVE S-775B": { labelCategory: "添加劑", partNo: "36.15044.000", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -5.00 },
+            "GRANDIC PC 8800FT": { labelCategory: "添加劑", partNo: "36.16404.000", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -4.00 },
+            "GRANDIC PC 8900FT": { labelCategory: "添加劑", partNo: "36.16404.002", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -5.60 },
+            "GRANDIC PC 6191FT": { labelCategory: "添加劑", partNo: "36.16404.003", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -4.00 },
+            "DX-690I": { labelCategory: "添加劑", partNo: "36.16404.012", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -4.00 },
+            "GRANDIC PC 8100FT": { labelCategory: "添加劑", partNo: "36.16404.071", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -4.00 },
+            "HC6222-001": { labelCategory: "感壓膠", partNo: "36.16404.075", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 40.00 },
+            "HC6224": { labelCategory: "感壓膠", partNo: "", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 40.00 },
+            "HC6229-006": { labelCategory: "感壓膠", partNo: "36.16404.075", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 40.00 },
+            "GRANDIC PC 4100T": { labelCategory: "添加劑", partNo: "36.17000.020", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -4.00 },
+            "GRANDIC PC 4900LT": { labelCategory: "添加劑", partNo: "36.17000.022", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -4.00 },
+            "UV 接著膠-UVAP02": { labelCategory: "UV感壓膠", partNo: "36.32857.000", hazard: "第四類 易燃液體", type: "第三石油類", solubility: "非水溶性", limit: 2000, flashPoint: -4.40 },
+            "UV 接著膠-UVAT01": { labelCategory: "UV感壓膠", partNo: "36.32859.000", hazard: "第四類 易燃液體", type: "第三石油類", solubility: "非水溶性", limit: 2000, flashPoint: -4.40 },
+            "HC6 224 004": { labelCategory: "感壓膠", partNo: "", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 40.00 },
+            "润湿分散剂-DISPERBYK-2150": { labelCategory: "添加劑", partNo: "", hazard: "第四類 易燃液體", type: "第三石油類", solubility: "非水溶性", limit: 2000, flashPoint: 100.00 },
+            "NANOBYK-3650": { labelCategory: "添加劑", partNo: "", hazard: "第四類 易燃液體", type: "第三石油類", solubility: "非水溶性", limit: 2000, flashPoint: 100.00 },
+            "MEK ST UP 溶劑型矽酸膠": { labelCategory: "添加劑", partNo: "", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: -9.00 },
+            "PSA廢膠": { labelCategory: "感壓膠", partNo: "", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 40.00 },
+            "C0301廢棄物(第一石油類)": { labelCategory: "C0301廢棄物(第一石油類)", partNo: "", hazard: "第四類 易燃液體", type: "第一石油類", solubility: "非水溶性", limit: 4.40 },
+            "C0301廢棄物(第二石油類)": { labelCategory: "C0301廢棄物(第二石油類)", partNo: "", hazard: "第四類 易燃液體", type: "第二石油類", solubility: "非水溶性", limit: 1000, flashPoint: 40.00 },
+        };
+
+        // --- TrendChart Component ---
+        const TrendChart = React.memo(({ data, title }) => {
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+            
+            const allChemicals = useMemo(() => {
+                if (!Array.isArray(data)) return [];
+                return [...new Set(data.map(r => String(r.chemical || "Unknown")))].sort();
+            }, [data]);
+            
+            const [selectedChemicals, setSelectedChemicals] = useState(new Set());
+
+            useEffect(() => {
+                if (allChemicals.length > 0) setSelectedChemicals(new Set(allChemicals));
+            }, [JSON.stringify(allChemicals)]); 
+
+            const chartData = useMemo(() => {
+                const dataMap = {}; 
+                const datesSet = new Set();
+                if (Array.isArray(data)) {
+                    data.forEach(r => {
+                        if (r && r.date) {
+                            if (!dataMap[r.date]) dataMap[r.date] = {};
+                            const chem = String(r.chemical || "Unknown");
+                            if (!dataMap[r.date][chem]) dataMap[r.date][chem] = 0;
+                            dataMap[r.date][chem] += Number(r.amount) || 0;
+                            datesSet.add(r.date);
+                        }
+                    });
+                }
+
+                const allDates = Array.from(datesSet).sort();
+                const currentSelected = selectedChemicals instanceof Set ? selectedChemicals : new Set();
+                const chemicals = allChemicals.filter(c => currentSelected.has(c));
+
+                const CHART_COLORS = ['#dc2626', '#2563eb', '#d97706', '#16a34a', '#7c3aed', '#db2777', '#0891b2', '#4f46e5', '#ca8a04', '#0d9488', '#be123c'];
+
+                const datasets = chemicals.map((chem) => {
+                    const chemData = allDates.map(date => (dataMap[date] && dataMap[date][chem]) || 0);
+                    const originalIndex = allChemicals.indexOf(chem);
+                    const color = CHART_COLORS[Math.abs(originalIndex) % CHART_COLORS.length];
+                    return { label: chem, data: chemData, borderColor: color, backgroundColor: color, borderWidth: 3, tension: 0.4, fill: false, pointRadius: 0, pointHoverRadius: 6, pointBackgroundColor: '#fff', pointBorderColor: color, pointBorderWidth: 2 };
+                });
+                return { labels: allDates, datasets: datasets };
+            }, [data, selectedChemicals, allChemicals]);
+
+            useEffect(() => {
+                if (chartRef.current) {
+                    if (chartInstance.current) chartInstance.current.destroy(); 
+                    const ctx = chartRef.current.getContext('2d');
+                    if (chartData.labels.length === 0 && chartData.datasets.length === 0) return;
+
+                    chartInstance.current = new Chart(ctx, {
+                        type: 'line', data: chartData,
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            interaction: { mode: 'nearest', axis: 'xy', intersect: false },
+                            plugins: {
+                                legend: { position: 'top', align: 'start', labels: { boxWidth: 10, usePointStyle: true, font: { family: "'Inter', sans-serif", size: window.innerWidth < 768 ? 10 : 11, weight: 'bold' } } },
+                                tooltip: { backgroundColor: 'rgba(30, 58, 138, 0.95)', titleFont: { size: 14, weight: 'bold' }, padding: 12, cornerRadius: 8 }
+                            },
+                            scales: {
+                                y: { border: { display: true }, grid: { borderDash: [4, 4] }, ticks: { font: { size: 12, weight: 'bold' } }, title: { display: window.innerWidth >= 768, text: '儲存量 (kg/L)', font: { size: 14, weight: 'bold' } } },
+                                x: { border: { display: true }, grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' }, maxRotation: 45, minRotation: 45 } }
+                            }
+                        }
+                    });
+                }
+                return () => { if (chartInstance.current) chartInstance.current.destroy();  };
+            }, [chartData]);
+
+            if (!data || data.length === 0) return null;
+
+            return (
+                <div className="bg-white rounded-2xl shadow-sharp border border-slate-300 p-4 md:p-6 mt-0 relative group h-[400px] md:h-[500px]">
+                    <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-brand-500 to-brand-900 rounded-t-2xl"></div>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-3">
+                         <h3 className="text-lg md:text-xl font-bold text-brand-900 flex items-center gap-2">
+                            <div className="bg-brand-50 p-2 rounded-xl text-brand-600 border border-brand-200"><TrendingUp size={20} /></div>
+                            {title || '化學品儲存量趨勢'}
+                        </h3>
+                        <div className="flex items-center gap-2 w-full md:w-auto">
+                             <MultiSelectDropdown options={allChemicals} selected={selectedChemicals} onChange={setSelectedChemicals} label="篩選化學品" />
+                        </div>
+                    </div>
+                    <div className="h-[280px] md:h-[400px] w-full"><canvas ref={chartRef}></canvas></div>
+                </div>
+            );
+        });
+
+        // --- ZoneComplianceTable Component ---
+        const ZoneComplianceTable = React.memo(({ title, records, config, chemicalDB }) => {
+            const dynamicConfig = useMemo(() => {
+                let newConfig = JSON.parse(JSON.stringify(config));
+                const recordChemicals = {};
+                records.forEach(r => { if(r.chemical) recordChemicals[r.chemical] = r; });
+                Object.keys(recordChemicals).forEach(chemName => {
+                    const rec = recordChemicals[chemName];
+                    const labelCat = rec.labelCategory || '未分類'; 
+                    const type = rec.type;
+                    const statLimit = chemicalDB[chemName] ? chemicalDB[chemName].limit : (rec.limit || 0); 
+                    let group = newConfig.find(g => g.type === type);
+                    if (!group) { group = { type: type || '其他', items: [] }; newConfig.push(group); }
+                    if (!group.items.find(i => i.name === labelCat)) group.items.push({ name: labelCat, limit: 0, statLimit: statLimit });
+                });
+                return newConfig;
+            }, [records, config, chemicalDB]);
+
+            const tableData = useMemo(() => {
+                const actualsMap = {};
+                records.forEach(r => {
+                    const key = `${r.type || '未分類'}_${r.labelCategory || '未分類'}`;
+                    actualsMap[key] = (actualsMap[key] || 0) + (Number(r.amount) || 0);
+                });
+                return dynamicConfig.map(typeGroup => {
+                    let totalApp = 0, totalActual = 0, totalLegalRatio = 0;
+                    const subRows = typeGroup.items.map(item => {
+                        const actualAmount = actualsMap[`${typeGroup.type}_${item.name}`] || 0;
+                        const legalRatio = item.statLimit > 0 ? (item.limit / item.statLimit) : 0;
+                        let excess = 0;
+                        if (item.limit === 0 && actualAmount > 0) excess = actualAmount;
+                        else if (actualAmount > item.limit) excess = actualAmount - item.limit;
+                        totalApp += item.limit; totalActual += actualAmount; totalLegalRatio += legalRatio;
+                        return { ...item, actualAmount, legalRatio, excess, isUnapplied: item.limit === 0 };
+                    });
+                    const totalComplianceRatio = totalApp > 0 ? (totalActual / totalApp) : (totalActual > 0 ? Infinity : 0);
+                    return { type: typeGroup.type, totalApp, totalLegalRatio, totalComplianceRatio, subRows };
+                });
+            }, [records, dynamicConfig]);
+
+            const zoneSummary = useMemo(() => {
+                 let totalRatio = 0, totalAmount = records.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+                 const actualsMap = {};
+                 records.forEach(r => { actualsMap[`${r.type}_${r.labelCategory}`] = (actualsMap[`${r.type}_${r.labelCategory}`] || 0) + (Number(r.amount) || 0); });
+                 dynamicConfig.forEach(g => g.items.forEach(i => totalRatio += (i.statLimit > 0 ? ((actualsMap[`${g.type}_${i.name}`] || 0) / i.statLimit) : 0)));
+                 return { totalRatio, totalAmount };
+            }, [records, dynamicConfig]);
+
+            if (records.length === 0) return null;
+
+            return (
+                <div className="bg-white rounded-2xl shadow-sharp border border-slate-300 mt-6 overflow-hidden">
+                    <div className="p-4 md:p-5 border-b border-slate-200 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-50">
+                        <h3 className="text-lg md:text-xl font-extrabold text-brand-900 flex items-center gap-2">
+                            <div className="p-2 bg-accent-100 rounded-lg text-accent-600"><AlertTriangle size={20} /></div>
+                            {title}
+                        </h3>
+                        <div className="flex items-center gap-4 md:gap-6 text-sm">
+                            <div className="flex flex-col items-end"><span className="text-xs text-slate-500 font-bold">總倍數</span><span className={`text-xl md:text-2xl font-black ${zoneSummary.totalRatio >= 30 ? 'text-danger' : 'text-brand-600'}`}>{zoneSummary.totalRatio.toFixed(2)}</span></div>
+                            <div className="w-px h-8 bg-slate-300"></div>
+                            <div className="flex flex-col items-end"><span className="text-xs text-slate-500 font-bold">總儲存量</span><span className="text-xl md:text-2xl font-black text-slate-800">{zoneSummary.totalAmount.toFixed(2)}</span></div>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto w-full">
+                        <table className="w-full text-center border-collapse table-bordered table-header-border text-sm min-w-[800px]">
+                            <thead>
+                                <tr>
+                                    <th className="bg-brand-800 text-white p-2 w-24 border-r border-brand-700">種類</th>
+                                    <th colSpan="5" className="bg-slate-100 p-2 text-xs">合法申請量(標示版)</th>
+                                    <th colSpan="3" className="bg-slate-100 p-2 text-xs border-l">實際儲存及符合度-By分類</th>
+                                    <th className="bg-slate-200 p-2 w-28 text-xs border-l">總量符合度</th>
+                                </tr>
+                                <tr className="text-xs bg-white">
+                                    <th className="bg-brand-800 border-r border-brand-700"></th> 
+                                    <th className="p-2">標示版分類</th><th className="p-2">申請量</th><th className="p-2">加總</th><th className="p-2">倍數</th><th className="p-2 border-r">加總</th>
+                                    <th className="p-2">儲存量</th><th className="p-2">超標量</th><th className="p-2 border-r">符合度</th>
+                                    <th className="bg-slate-200 border-l"></th> 
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-300 text-xs md:text-sm">
+                                {tableData.map((typeGroup) => typeGroup.subRows.map((sub, idx) => (
+                                    <tr key={`${typeGroup.type}-${sub.name}`} className="hover:bg-brand-50/50">
+                                        {idx === 0 && <td rowSpan={typeGroup.subRows.length} className="bg-brand-50 text-brand-800 font-extrabold p-2 border-r">{typeGroup.type}</td>}
+                                        <td className="p-2 font-bold text-left pl-3">{sub.name}</td>
+                                        <td className="p-2 text-slate-600">{sub.isUnapplied ? <span className="text-slate-400">未申請</span> : sub.limit.toLocaleString()}</td>
+                                        {idx === 0 && <td rowSpan={typeGroup.subRows.length} className="p-2 font-bold">{typeGroup.totalApp.toLocaleString()}</td>}
+                                        <td className="p-2">{sub.isUnapplied ? "-" : sub.legalRatio.toFixed(2)}</td>
+                                        {idx === 0 && <td rowSpan={typeGroup.subRows.length} className="p-2 font-bold border-r">{typeGroup.totalLegalRatio.toFixed(2)}</td>}
+                                        <td className={`p-2 font-bold ${sub.actualAmount > 0 ? 'text-brand-700' : 'text-slate-400'}`}>{sub.actualAmount > 0 ? sub.actualAmount.toLocaleString() : "0"}</td>
+                                        <td className="p-2">{sub.isUnapplied && sub.actualAmount > 0 ? <span className="text-danger font-bold">未申請</span> : (sub.actualAmount === 0 ? "-" : (sub.excess > 0 ? sub.excess.toFixed(2) : <span className="text-success text-[10px] font-bold">OK</span>))}</td>
+                                        <td className={`p-2 font-bold border-r ${sub.excess > 0 || (sub.isUnapplied && sub.actualAmount > 0) ? 'text-danger' : 'text-success'}`}>{sub.isUnapplied && sub.actualAmount > 0 ? "超量" : (sub.actualAmount === 0 ? "-" : (sub.excess > 0 ? "超量" : "符合"))}</td>
+                                        {idx === 0 && <td rowSpan={typeGroup.subRows.length} className="p-2 border-l bg-slate-100">
+                                            <div className="flex flex-col items-center"><span className={`text-xl font-black ${typeGroup.totalComplianceRatio > 1 ? 'text-danger' : 'text-success'}`}>{typeGroup.totalComplianceRatio === Infinity ? "∞" : typeGroup.totalComplianceRatio.toFixed(2)}</span>
+                                            {typeGroup.totalComplianceRatio > 1 ? <span className="px-2 py-0.5 rounded-full bg-red-100 text-danger text-[10px]">超標</span> : <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-success text-[10px]">PASS</span>}</div>
+                                        </td>}
+                                    </tr>
+                                )))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        });
+
+        // --- Data List View (Card View for Mobile, Table for Desktop) ---
+        const LocationDataList = React.memo(({ title, records, onEdit, onDelete, selectedIds, onToggleSelect, onToggleAll, onBulkDelete }) => {
+            const allSelected = records.length > 0 && records.every(r => selectedIds.has(r.id));
+            const selectedCount = records.filter(r => selectedIds.has(r.id)).length;
+
+            return (
+                <div className="bg-white rounded-2xl shadow-sharp border border-slate-300 mb-8 overflow-hidden">
+                    <div className="px-4 py-3 md:px-6 md:py-5 border-b border-slate-200 flex justify-between items-center flex-wrap gap-3">
+                        <h3 className="text-lg md:text-xl font-bold text-slate-900 flex items-center gap-2">
+                            <div className="p-1.5 md:p-2 bg-brand-50 rounded-lg text-brand-600"><Database size={18} /></div>
+                            {title}
+                        </h3>
+                        {selectedCount > 0 && (
+                            <button onClick={() => onBulkDelete(records.filter(r => selectedIds.has(r.id)).map(r => r.id))} className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-sm font-bold shadow-md">
+                                <Trash2 size={16} className="inline mr-1" /> 刪除 ({selectedCount})
+                            </button>
+                        )}
+                    </div>
+                    
+                    {/* 手機版：卡片式列表 (Mobile Card View) */}
+                    <div className="block lg:hidden p-3 space-y-3 bg-slate-50">
+                        <div className="flex items-center gap-2 px-2 pb-1">
+                            <input type="checkbox" checked={allSelected} onChange={() => onToggleAll(records.map(r => r.id), !allSelected)} className="w-5 h-5 accent-brand-600 rounded" id={`selectAll-${title}`} />
+                            <label htmlFor={`selectAll-${title}`} className="text-sm font-bold text-slate-600">全選所有項目</label>
+                        </div>
+                        {records.map((record) => {
+                            const ratio = record.limit ? (record.amount / record.limit).toFixed(2) : "0.00";
+                            const isDanger = ratio > 1;
+                            
+                            return (
+                                <div key={record.id} className={`bg-white rounded-xl p-4 shadow-sm border ${selectedIds.has(record.id) ? 'border-brand-500 ring-1 ring-brand-500' : 'border-slate-200'}`}>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="flex gap-3 items-start">
+                                            <input type="checkbox" checked={selectedIds.has(record.id)} onChange={() => onToggleSelect(record.id)} className="mt-1 w-5 h-5 accent-brand-600 rounded" />
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 text-base md:text-lg leading-tight">{record.chemical}</h4>
+                                                <span className="text-xs text-slate-500">{record.date} | {record.location}</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-1">
+                                            <button onClick={() => onEdit(record)} className="text-brand-600 p-1.5 bg-brand-50 rounded-lg"><Edit size={16} /></button>
+                                            <button onClick={() => onDelete(record.id)} className="text-danger p-1.5 bg-red-50 rounded-lg"><Trash2 size={16} /></button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-2 text-sm mt-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                        <div className="flex flex-col"><span className="text-[10px] font-bold text-slate-400">儲存量 (L)</span><span className="font-bold text-brand-700 text-lg">{record.amount}</span></div>
+                                        <div className="flex flex-col"><span className="text-[10px] font-bold text-slate-400">管制倍數</span>
+                                            <span className={`font-black text-lg ${isDanger ? 'text-danger' : 'text-success'}`}>{ratio} 倍</span>
+                                        </div>
+                                        <div className="flex flex-col mt-1"><span className="text-[10px] font-bold text-slate-400">管制量(L)</span><span className="font-medium text-slate-700">{record.limit}</span></div>
+                                        <div className="flex flex-col mt-1"><span className="text-[10px] font-bold text-slate-400">歸類/種類</span><span className="font-medium text-slate-700 truncate">{record.labelCategory}</span></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* 電腦版：表格 (Desktop Table View) */}
+                    <div className="hidden lg:block overflow-x-auto w-full">
+                        <table className="w-full text-left border-collapse min-w-[1000px]">
+                            <thead>
+                                <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 text-xs font-extrabold whitespace-nowrap">
+                                    <th className="p-3 text-center w-12"><input type="checkbox" checked={allSelected} onChange={() => onToggleAll(records.map(r => r.id), !allSelected)} /></th>
+                                    <th className="p-3 text-center">盤點日期</th><th className="p-3 text-center">場所</th><th className="p-3 text-center">標示版歸類</th>
+                                    <th className="p-3">化學品名稱</th><th className="p-3 text-center">危物分類</th><th className="p-3 text-center">管制量</th>
+                                    <th className="p-3 text-center">儲存量</th><th className="p-3 text-center">倍數</th><th className="p-3 text-center w-24">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200 text-sm">
+                                {records.map((record) => (
+                                    <tr key={record.id} className={`hover:bg-slate-50 transition-colors ${selectedIds.has(record.id) ? 'bg-brand-50' : ''}`}>
+                                        <td className="p-3 text-center"><input type="checkbox" checked={selectedIds.has(record.id)} onChange={() => onToggleSelect(record.id)} /></td>
+                                        <td className="p-3 text-center font-mono font-bold whitespace-nowrap">{record.date}</td>
+                                        <td className="p-3 text-center font-bold">{record.location}</td>
+                                        <td className="p-3 text-center font-bold text-slate-700">{record.labelCategory}</td>
+                                        <td className="p-3 font-bold text-brand-900">{record.chemical}</td>
+                                        <td className="p-3 text-center text-xs font-semibold">{record.hazard}</td>
+                                        <td className="p-3 text-center font-mono font-medium">{record.limit}</td>
+                                        <td className="p-3 text-center text-brand-700 font-black font-mono text-base">{record.amount}</td>
+                                        <td className="p-3 text-center font-black font-mono text-slate-800">{record.limit ? (record.amount / record.limit).toFixed(2) : "0.00"}</td>
+                                        <td className="p-3 text-center flex justify-center gap-1">
+                                            <button onClick={() => onEdit(record)} className="text-brand-600 p-1.5 hover:bg-brand-100 rounded"><Edit size={16} /></button>
+                                            <button onClick={() => onDelete(record.id)} className="text-danger p-1.5 hover:bg-red-100 rounded"><Trash2 size={16} /></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            );
+        });
+
+        // --- 主應用程式 ---
+        const App = () => {
+            const [records, setRecords] = useState([]);
+            const [customChemicals, setCustomChemicals] = useState({});
+            const [selectedIds, setSelectedIds] = useState(new Set());
+            const [activeTab, setActiveTab] = useState('compliance');
+            const [showFiltersMobile, setShowFiltersMobile] = useState(false); // 控制手機版篩選器展開
+
+            const chemicalDB = useMemo(() => ({ ...INITIAL_CHEMICAL_DB, ...customChemicals }), [customChemicals]);
+            const fullChemicalList = useMemo(() => Object.keys(chemicalDB), [chemicalDB]);
+
+            const today = new Date().toISOString().split('T')[0];
+            const [formData, setFormData] = useState({ date: today, chemical: '', location: '', amount: '' });
+            const [editId, setEditId] = useState(null);
+            const [notification, setNotification] = useState(null);
+            
+            // 篩選狀態
+            const [filterStartDate, setFilterStartDate] = useState(today);
+            const [filterEndDate, setFilterEndDate] = useState(today);
+            const [filterChemical, setFilterChemical] = useState(new Set());
+            const [filterLocation, setFilterLocation] = useState('');
+            const [filterLabelCategory, setFilterLabelCategory] = useState('');
+
+            const fileInputRef = useRef(null); 
+            const amountInputRef = useRef(null);
+
+            useEffect(() => {
+                const initData = async () => {
+                    const savedCustom = localStorage.getItem('custom_chemicals');
+                    if (savedCustom) setCustomChemicals(JSON.parse(savedCustom));
+                    const saved = localStorage.getItem('chemical_records');
+                    if (saved) setRecords(JSON.parse(saved));
+                };
+                initData();
+            }, []);
+
+            useEffect(() => { localStorage.setItem('chemical_records', JSON.stringify(records)); }, [records]);
+            useEffect(() => { localStorage.setItem('custom_chemicals', JSON.stringify(customChemicals)); }, [customChemicals]);
+
+            const showNotification = (message, type = 'success') => { setNotification({ message, type }); setTimeout(() => setNotification(null), 3000); };
+            const handleInputChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
+
+            const handleAddRecord = (e) => {
+                e.preventDefault();
+                if (!chemicalDB[formData.chemical]) { showNotification("請選擇清單內的化學品！", "error"); return; }
+                const details = chemicalDB[formData.chemical];
+                const recordData = { ...formData, amount: parseFloat(formData.amount), ...details, timestamp: Date.now() };
+                
+                if (editId) {
+                    setRecords(prev => prev.map(r => r.id === editId ? { ...recordData, id: editId } : r));
+                    showNotification("資料修改成功！", "success"); setEditId(null);
+                } else {
+                    setRecords(prev => [{ id: Date.now(), ...recordData }, ...prev]);
+                    showNotification("資料新增成功！", "success");
+                }
+                setFormData(editId ? { date: today, chemical: '', location: '', amount: '' } : { ...formData, chemical: '', amount: '' });
+            };
+
+            const handleEdit = (r) => { setFormData({ date: r.date, chemical: r.chemical, location: r.location, amount: r.amount }); setEditId(r.id); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+            const handleDelete = (id) => { if (confirm("確定刪除此筆資料？")) setRecords(records.filter(r => r.id !== id)); };
+            const handleBulkDelete = (ids) => { if (confirm(`確定刪除 ${ids.length} 筆資料？`)) { setRecords(records.filter(r => !ids.includes(r.id))); setSelectedIds(new Set()); }};
+            
+            const handleToggleSelect = (id) => { const newSet = new Set(selectedIds); newSet.has(id) ? newSet.delete(id) : newSet.add(id); setSelectedIds(newSet); };
+            const handleSelectAll = (ids, select) => { const newSet = new Set(selectedIds); ids.forEach(id => select ? newSet.add(id) : newSet.delete(id)); setSelectedIds(newSet); };
+
+            const filteredRecords = useMemo(() => records.filter(r => 
+                (!filterStartDate || r.date >= filterStartDate) && (!filterEndDate || r.date <= filterEndDate) &&
+                (filterChemical.size === 0 || filterChemical.has(r.chemical)) && (!filterLocation || r.location === filterLocation) &&
+                (!filterLabelCategory || String(r.labelCategory).includes(filterLabelCategory))
+            ), [records, filterStartDate, filterEndDate, filterChemical, filterLocation, filterLabelCategory]);
+
+            const warehouseRecords = filteredRecords.filter(r => r.location === '危險品庫房');
+            const l30Records = filteredRecords.filter(r => ['C4原膠室', 'P1原膠室'].includes(r.location));
+            
+            const totalAmounts = {
+                warehouse: warehouseRecords.reduce((sum, r) => sum + (Number(r.amount) || 0), 0),
+                l30: l30Records.reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
+            };
+
+            // ====== 新增：LINE 分享功能 ======
+            const handleShareLine = () => {
+                if (filteredRecords.length === 0) { showNotification("目前沒有資料可供分享！", "error"); return; }
+
+                let text = `【龍科廠-公共危險物品庫存報告】\n`;
+                text += `📅 區間: ${filterStartDate || '最初'} ~ ${filterEndDate || '最新'}\n`;
+                text += `📊 總筆數: ${filteredRecords.length} 筆\n`;
+                text += `🏭 庫房儲存量: ${totalAmounts.warehouse.toFixed(2)}\n`;
+                text += `🏭 L30室儲存量: ${totalAmounts.l30.toFixed(2)}\n\n`;
+
+                // 檢查異常項目 (超過管制量)
+                const anomalies = filteredRecords.filter(r => {
+                    const ratio = r.limit > 0 ? (r.amount / r.limit) : 0;
+                    return ratio >= 1 || (r.limit === 0 && r.amount > 0); // >= 1 倍 或未申請卻有量
+                });
+
+                if (anomalies.length > 0) {
+                    text += `🚨 【注意：超標或未申請清單】\n`;
+                    anomalies.slice(0, 10).forEach(r => {
+                        const ratio = r.limit > 0 ? (r.amount / r.limit) : 0;
+                        text += `⚠️ ${r.chemical} (${r.location}): 倍數 ${ratio.toFixed(2)}\n`;
+                    });
+                    if (anomalies.length > 10) text += `...(等共 ${anomalies.length} 項異常)\n`;
+                } else {
+                    text += `✅ 目前顯示資料皆符合管制量範圍，無超標。\n`;
+                }
+
+                text += `\n🔗 (系統自動產生分享)`;
+                
+                const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+                window.open(url, '_blank');
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-100 p-3 md:p-6 lg:p-8 font-sans">
+                    {notification && (<div className={`fixed top-4 md:bottom-6 md:top-auto right-4 md:right-6 px-4 py-3 md:px-6 md:py-4 rounded-lg shadow-xl flex items-center gap-3 z-50 text-white font-bold text-sm md:text-base ${notification.type === 'error' ? 'bg-red-500' : 'bg-brand-600'}`}>{notification.message}</div>)}
+                    
+                    <div className="max-w-[1600px] mx-auto">
+                        <header className="mb-6 md:mb-10 text-center md:text-left pt-2 pb-4 border-b border-slate-300">
+                             <div className="flex flex-col md:flex-row items-center justify-center md:justify-start gap-3 md:gap-5">
+                                <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-200">
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/BenQ_logo.svg/200px-BenQ_logo.svg.png" alt="BenQ Logo" className="h-8 md:h-10 w-auto object-contain" />
+                                </div>
+                                <div>
+                                    <h1 className="text-xl md:text-3xl font-black text-brand-800 flex flex-col md:flex-row items-center gap-1 md:gap-3 tracking-tight">
+                                        龍科廠 <span className="hidden md:inline text-slate-400 font-light">|</span> 公共危險物品儲存量管理
+                                    </h1>
+                                </div>
+                            </div>
+                        </header>
+
+                        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 items-start">
+                            {/* 左側：輸入表單區 */}
+                            <div className="xl:col-span-1 bg-white rounded-2xl shadow-md p-4 md:p-6 border border-slate-200">
+                                <h2 className="text-lg font-bold mb-4 text-slate-800 flex items-center gap-2 pb-3 border-b border-slate-100">
+                                    <div className="p-1.5 rounded-lg bg-brand-100 text-brand-600"><PlusCircle size={18} /></div>
+                                    {editId ? '修改資料' : '實際儲存量輸入'}
+                                </h2>
+                                <form onSubmit={handleAddRecord} className="space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-4">
+                                        <div><label className="text-xs font-bold text-slate-500 mb-1 block">盤點日期</label><input type="date" name="date" value={formData.date} onChange={handleInputChange} className="w-full p-2.5 border rounded-lg bg-slate-50" required /></div>
+                                        <div><label className="text-xs font-bold text-slate-500 mb-1 block">儲存場所</label>
+                                            <select name="location" value={formData.location} onChange={handleInputChange} className="w-full p-2.5 border rounded-lg bg-slate-50" required>
+                                                <option value="">選擇場所</option>{STORAGE_LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 mb-1 block">化學品名稱</label>
+                                        <SearchableSelect value={formData.chemical} onChange={(v) => setFormData({...formData, chemical: v})} options={fullChemicalList} placeholder="搜尋化學品..." />
+                                    </div>
+                                    <div><label className="text-xs font-bold text-slate-500 mb-1 block">儲存量 (kg/L)</label><input type="number" step="0.01" name="amount" value={formData.amount} onChange={handleInputChange} className="w-full p-2.5 border rounded-lg bg-slate-50 font-mono" required /></div>
+                                    
+                                    <div className="flex gap-2 pt-2">
+                                        {editId && <button type="button" onClick={() => {setEditId(null); setFormData({date:today, chemical:'', location:'', amount:''})}} className="w-1/3 bg-slate-200 text-slate-700 font-bold py-2.5 rounded-lg">取消</button>}
+                                        <button type="submit" className={`flex-1 bg-brand-600 text-white font-bold py-2.5 rounded-lg shadow-md hover:bg-brand-700 flex justify-center items-center gap-2`}>
+                                            <Save size={18} /> {editId ? '確認修改' : '新增資料'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            {/* 右側：顯示區 */}
+                            <div className="xl:col-span-4 flex flex-col gap-4">
+                                
+                                {/* 篩選與工具列 */}
+                                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+                                    <div className="flex justify-between items-center cursor-pointer md:cursor-default" onClick={() => window.innerWidth < 768 && setShowFiltersMobile(!showFiltersMobile)}>
+                                        <div className="font-bold text-slate-800 flex items-center gap-2">
+                                            <Filter size={18} className="text-brand-500" /> 資料篩選與匯出
+                                        </div>
+                                        {/* 手機板：展開/收合圖示 */}
+                                        <ChevronDown className={`md:hidden text-slate-400 transition-transform ${showFiltersMobile ? 'rotate-180' : ''}`} />
+                                    </div>
+
+                                    {/* 篩選條件與按鈕：手機版預設隱藏，點擊後展開 */}
+                                    <div className={`${showFiltersMobile ? 'block' : 'hidden'} md:block mt-4 space-y-4`}>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 flex gap-1 items-center">
+                                                <input type="date" value={filterStartDate} onChange={e=>setFilterStartDate(e.target.value)} className="w-full text-sm bg-transparent border-none p-1" />
+                                                <span className="text-slate-400">~</span>
+                                                <input type="date" value={filterEndDate} onChange={e=>setFilterEndDate(e.target.value)} className="w-full text-sm bg-transparent border-none p-1" />
+                                            </div>
+                                            <select value={filterLocation} onChange={e=>setFilterLocation(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm">
+                                                <option value="">全部場所</option>{STORAGE_LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                                            </select>
+                                            <MultiSelectDropdown options={fullChemicalList} selected={filterChemical} onChange={setFilterChemical} placeholder="過濾化學品..." />
+                                            <button onClick={() => {setFilterStartDate(today); setFilterEndDate(today); setFilterChemical(new Set()); setFilterLocation('');}} className="bg-slate-100 text-slate-600 font-bold p-2.5 rounded-lg text-sm hover:bg-slate-200 border border-slate-300">
+                                                重置條件
+                                            </button>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+                                            <button className="flex-1 md:flex-none justify-center bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-emerald-100">
+                                                <Download size={16} /> 匯出 Excel
+                                            </button>
+                                            
+                                            {/* 新增：分享至 LINE 按鈕 */}
+                                            <button onClick={handleShareLine} className="flex-1 md:flex-none justify-center bg-[#06C755]/10 text-[#06C755] border border-[#06C755]/30 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-[#06C755]/20 shadow-sm transition-colors">
+                                                <LineIcon size={18} /> 分享至 LINE
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 分頁導覽 (Tab) - 手機版橫向滾動 */}
+                                <div className="bg-slate-200 p-1.5 rounded-xl flex overflow-x-auto gap-1.5 hide-scrollbar">
+                                    <button onClick={() => setActiveTab('compliance')} className={`flex-1 min-w-[140px] py-2.5 px-3 text-sm md:text-base font-bold rounded-lg flex justify-center items-center gap-2 whitespace-nowrap ${activeTab === 'compliance' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:bg-slate-300'}`}>
+                                        <AlertTriangle size={16} /> 符合度表
+                                    </button>
+                                    <button onClick={() => setActiveTab('list')} className={`flex-1 min-w-[140px] py-2.5 px-3 text-sm md:text-base font-bold rounded-lg flex justify-center items-center gap-2 whitespace-nowrap ${activeTab === 'list' ? 'bg-purple-600 text-white shadow' : 'text-slate-600 hover:bg-slate-300'}`}>
+                                        <Database size={16} /> 儲存列表
+                                    </button>
+                                    <button onClick={() => setActiveTab('trend')} className={`flex-1 min-w-[140px] py-2.5 px-3 text-sm md:text-base font-bold rounded-lg flex justify-center items-center gap-2 whitespace-nowrap ${activeTab === 'trend' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:bg-slate-300'}`}>
+                                        <TrendingUp size={16} /> 趨勢圖
+                                    </button>
+                                </div>
+
+                                {/* 內容區 */}
+                                <div>
+                                    {activeTab === 'compliance' && (
+                                        <div className="tab-content-active">
+                                            {warehouseRecords.length > 0 && <ZoneComplianceTable title="危險品庫房" records={warehouseRecords} config={WAREHOUSE_STATS_CONFIG} chemicalDB={chemicalDB} />}
+                                            {l30Records.length > 0 && <ZoneComplianceTable title="L30原膠室" records={l30Records} config={L30_STATS_CONFIG} chemicalDB={chemicalDB} />}
+                                            {filteredRecords.length === 0 && <div className="p-8 text-center text-slate-400 bg-white rounded-xl mt-4">尚無符合的資料</div>}
+                                        </div>
+                                    )}
+                                    {activeTab === 'list' && (
+                                        <div className="tab-content-active mt-4">
+                                            {warehouseRecords.length > 0 && <LocationDataList title="危險品庫房" records={warehouseRecords} onEdit={handleEdit} onDelete={handleDelete} selectedIds={selectedIds} onToggleSelect={handleToggleSelect} onToggleAll={handleSelectAll} onBulkDelete={handleBulkDelete} />}
+                                            {l30Records.length > 0 && <LocationDataList title="L30原膠室" records={l30Records} onEdit={handleEdit} onDelete={handleDelete} selectedIds={selectedIds} onToggleSelect={handleToggleSelect} onToggleAll={handleSelectAll} onBulkDelete={handleBulkDelete} />}
+                                            {filteredRecords.length === 0 && <div className="p-8 text-center text-slate-400 bg-white rounded-xl mt-4">尚無符合的資料</div>}
+                                        </div>
+                                    )}
+                                    {activeTab === 'trend' && (
+                                        <div className="tab-content-active grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+                                            {warehouseRecords.length > 0 && <TrendChart data={warehouseRecords} title="庫房趨勢" />}
+                                            {l30Records.length > 0 && <TrendChart data={l30Records} title="L30趨勢" />}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
