@@ -623,7 +623,7 @@
             const [records, setRecords] = useState([]);
             const [customChemicals, setCustomChemicals] = useState({});
             const [selectedIds, setSelectedIds] = useState(new Set());
-            const [activeTab, setActiveTab] = useState('compliance');
+            const [activeTab, setActiveTab] = useState('list'); // 變更預設為 'list'
             const [showFiltersMobile, setShowFiltersMobile] = useState(false); // 控制手機版篩選器展開
 
             const chemicalDB = useMemo(() => ({ ...INITIAL_CHEMICAL_DB, ...customChemicals }), [customChemicals]);
@@ -820,7 +820,7 @@
                             </div>
 
                             {/* 右側：顯示區 */}
-                            <div className="xl:col-span-4 flex flex-col gap-4">
+                            <div className="xl:col-span-4 flex flex-col gap-4 min-w-0">
                                 
                                 {/* 篩選與工具列 */}
                                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
@@ -864,11 +864,11 @@
 
                                 {/* 分頁導覽 (Tab) - 手機版橫向滾動 */}
                                 <div className="bg-slate-200 p-1.5 rounded-xl flex overflow-x-auto gap-1.5 hide-scrollbar">
-                                    <button onClick={() => setActiveTab('compliance')} className={`flex-1 min-w-[140px] py-2.5 px-3 text-sm md:text-base font-bold rounded-lg flex justify-center items-center gap-2 whitespace-nowrap ${activeTab === 'compliance' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:bg-slate-300'}`}>
-                                        <AlertTriangle size={16} /> 符合度表
-                                    </button>
                                     <button onClick={() => setActiveTab('list')} className={`flex-1 min-w-[140px] py-2.5 px-3 text-sm md:text-base font-bold rounded-lg flex justify-center items-center gap-2 whitespace-nowrap ${activeTab === 'list' ? 'bg-purple-600 text-white shadow' : 'text-slate-600 hover:bg-slate-300'}`}>
                                         <Database size={16} /> 儲存列表
+                                    </button>
+                                    <button onClick={() => setActiveTab('compliance')} className={`flex-1 min-w-[140px] py-2.5 px-3 text-sm md:text-base font-bold rounded-lg flex justify-center items-center gap-2 whitespace-nowrap ${activeTab === 'compliance' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 hover:bg-slate-300'}`}>
+                                        <AlertTriangle size={16} /> 符合度表
                                     </button>
                                     <button onClick={() => setActiveTab('trend')} className={`flex-1 min-w-[140px] py-2.5 px-3 text-sm md:text-base font-bold rounded-lg flex justify-center items-center gap-2 whitespace-nowrap ${activeTab === 'trend' ? 'bg-emerald-600 text-white shadow' : 'text-slate-600 hover:bg-slate-300'}`}>
                                         <TrendingUp size={16} /> 趨勢圖
@@ -877,17 +877,17 @@
 
                                 {/* 內容區 */}
                                 <div>
-                                    {activeTab === 'compliance' && (
-                                        <div className="tab-content-active">
-                                            {warehouseRecords.length > 0 && <ZoneComplianceTable title="危險品庫房" records={warehouseRecords} config={WAREHOUSE_STATS_CONFIG} chemicalDB={chemicalDB} />}
-                                            {l30Records.length > 0 && <ZoneComplianceTable title="L30原膠室" records={l30Records} config={L30_STATS_CONFIG} chemicalDB={chemicalDB} />}
-                                            {filteredRecords.length === 0 && <div className="p-8 text-center text-slate-400 bg-white rounded-xl mt-4">尚無符合的資料</div>}
-                                        </div>
-                                    )}
                                     {activeTab === 'list' && (
                                         <div className="tab-content-active mt-4">
                                             {warehouseRecords.length > 0 && <LocationDataList title="危險品庫房" records={warehouseRecords} onEdit={handleEdit} onDelete={handleDelete} selectedIds={selectedIds} onToggleSelect={handleToggleSelect} onToggleAll={handleSelectAll} onBulkDelete={handleBulkDelete} />}
                                             {l30Records.length > 0 && <LocationDataList title="L30原膠室" records={l30Records} onEdit={handleEdit} onDelete={handleDelete} selectedIds={selectedIds} onToggleSelect={handleToggleSelect} onToggleAll={handleSelectAll} onBulkDelete={handleBulkDelete} />}
+                                            {filteredRecords.length === 0 && <div className="p-8 text-center text-slate-400 bg-white rounded-xl mt-4">尚無符合的資料</div>}
+                                        </div>
+                                    )}
+                                    {activeTab === 'compliance' && (
+                                        <div className="tab-content-active mt-4">
+                                            {warehouseRecords.length > 0 && <ZoneComplianceTable title="危險品庫房" records={warehouseRecords} config={WAREHOUSE_STATS_CONFIG} chemicalDB={chemicalDB} />}
+                                            {l30Records.length > 0 && <ZoneComplianceTable title="L30原膠室" records={l30Records} config={L30_STATS_CONFIG} chemicalDB={chemicalDB} />}
                                             {filteredRecords.length === 0 && <div className="p-8 text-center text-slate-400 bg-white rounded-xl mt-4">尚無符合的資料</div>}
                                         </div>
                                     )}
