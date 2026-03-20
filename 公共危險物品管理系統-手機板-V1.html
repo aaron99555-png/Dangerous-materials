@@ -665,7 +665,7 @@
             useEffect(() => { localStorage.setItem('chemical_records', JSON.stringify(records)); }, [records]);
             useEffect(() => { localStorage.setItem('custom_chemicals', JSON.stringify(customChemicals)); }, [customChemicals]);
 
-            const showNotification = (message, type = 'success') => { setNotification({ message, type }); setTimeout(() => setNotification(null), 3000); };
+            const showNotification = (message, type = 'success') => { setNotification({ message, type }); setTimeout(() => setNotification(null), 4000); };
             const handleInputChange = (e) => { setFormData({ ...formData, [e.target.name]: e.target.value }); };
 
             const handleAddRecord = (e) => {
@@ -739,55 +739,42 @@
                 showNotification("匯出成功！", "success");
             };
 
+            // ====== 修改為標準 Web Share API (直接帶檔案至原生選單) ======
             const handleShareLine = async () => {
                 if (filteredRecords.length === 0) { showNotification("目前沒有資料可供分享！", "error"); return; }
 
                 try {
-                    // 1. 自動下載 Excel 檔案到手機
+                    // 1. 產生真正的 EXCEL 檔案物件 (File Object)
                     const blob = generateExcelBlob();
                     const fileName = `公共危險物品庫存報告_${new Date().toISOString().slice(0,10)}.xlsx`;
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    setTimeout(() => URL.revokeObjectURL(url), 1000); // 延遲釋放確保下載成功
+                    const file = new File([blob], fileName, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-                    // 2. 準備 LINE 訊息文字 (包含引導附加檔案的提示)
-                    let text = `【龍科廠-公共危險物品庫存報告】\n`;
-                    text += `📅 區間: ${filterStartDate || '最初'} ~ ${filterEndDate || '最新'}\n`;
-                    text += `📊 總筆數: ${filteredRecords.length} 筆\n`;
-                    text += `\n📁 [提示] 完整的 EXCEL 檔案已經自動下載到您的手機！\n👉 請點擊聊天室下方「+」>「檔案」，將剛剛下載的報表傳送出來。\n\n`;
+                    // 2. 準備摘要文字
+                    let textMsg = `【龍科廠-公共危險物品庫存報告】\n區間: ${filterStartDate || '最初'} ~ ${filterEndDate || '最新'}\n共計 ${filteredRecords.length} 筆資料。`;
 
-                    // 檢查異常項目
-                    const anomalies = filteredRecords.filter(r => {
-                        const ratio = r.limit > 0 ? (r.amount / r.limit) : 0;
-                        return ratio >= 1 || (r.limit === 0 && r.amount > 0);
-                    });
-                    
-                    if (anomalies.length > 0) {
-                        text += `🚨 【超標或未申請清單】\n`;
-                        anomalies.slice(0, 10).forEach(r => {
-                            const ratio = r.limit > 0 ? (r.amount / r.limit) : 0;
-                            text += `⚠️ ${r.chemical} (${r.location}): ${ratio.toFixed(2)} 倍\n`;
+                    // 3. 檢查手機瀏覽器是否支援「直接檔案分享」
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        // 提示使用者下一步動作
+                        showNotification("請在彈出的選單中點選「LINE」進行分享", "success");
+                        
+                        // 呼叫系統原生分享
+                        await navigator.share({
+                            files: [file],
+                            title: '公共危險物品庫存報告',
+                            text: textMsg
                         });
-                        if (anomalies.length > 10) text += `...(等共 ${anomalies.length} 項異常)\n`;
                     } else {
-                        text += `✅ 目前顯示資料皆符合管制量範圍。\n`;
+                        // 電腦版或不支援的舊版瀏覽器，降級為下載檔案
+                        showNotification("您的瀏覽器不支援直接分享檔案，已改為下載檔案。", "error");
+                        handleExportExcel();
                     }
-
-                    // 3. 透過 LINE 專屬連結直接開啟 APP
-                    const lineUrl = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
-                    
-                    // 使用 location.href 喚醒 APP (確保安卓手機不被阻擋)
-                    window.location.href = lineUrl;
-                    
-                    showNotification("已為您下載 EXCEL，正在開啟 LINE...", "success");
                 } catch (error) {
-                    console.error("分享失敗:", error);
-                    showNotification("處理失敗，請確認網路或瀏覽器狀態。", "error");
+                    // 忽略使用者按「取消」導致的錯誤
+                    if (error.name !== 'AbortError') {
+                        console.error("分享失敗:", error);
+                        showNotification("系統分享取消或失敗，改為直接下載檔案。", "error");
+                        handleExportExcel();
+                    }
                 }
             };
 
