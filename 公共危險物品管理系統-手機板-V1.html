@@ -739,7 +739,7 @@
                 showNotification("匯出成功！", "success");
             };
 
-            // ====== 分享至 LINE (雙重保險機制) ======
+            // ====== 修正：只使用原生分享直接夾帶檔案 ======
             const handleShareLine = async () => {
                 if (filteredRecords.length === 0) { showNotification("目前沒有資料可供分享！", "error"); return; }
 
@@ -748,40 +748,26 @@
                 let textMsg = `【龍科廠-公共危險物品庫存報告】\n區間: ${filterStartDate || '最初'} ~ ${filterEndDate || '最新'}\n共計 ${filteredRecords.length} 筆資料。`;
 
                 try {
-                    // 1. 優先嘗試：原生分享選單 (唯一能直接夾帶檔案的合法途徑)
+                    // 唯一能直接夾帶檔案分享的合法標準作法
                     const file = new File([blob], fileName, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                     
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    if (navigator.share) {
+                        // 直接呼叫手機底層的分享選單
                         await navigator.share({
                             files: [file],
                             title: '公共危險物品庫存報告',
                             text: textMsg
                         });
-                        return; // 成功則結束
+                        showNotification("請在彈出的選單點選 LINE 傳送", "success");
                     } else {
-                        throw new Error("裝置不支援原生分享");
+                        throw new Error("您的裝置/瀏覽器不支援原生分享");
                     }
                 } catch (error) {
-                    if (error.name === 'AbortError') return; // 忽略使用者按取消
+                    if (error.name === 'AbortError') return; // 忽略使用者自己按取消
                     
-                    // 2. 備用方案：自動下載檔案 + 強制開啟 LINE APP
-                    console.log("切換為跳轉 LINE 模式");
-                    
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-                    // 加上引導附加檔案的文字
-                    let fallbackMsg = `${textMsg}\n\n👉 [系統提示] EXCEL 報表已經自動下載到您的手機，請點擊左下角「+」>「檔案」將其傳送。`;
-                    
-                    // 直接開啟 LINE
-                    window.location.href = `https://line.me/R/msg/text/?${encodeURIComponent(fallbackMsg)}`;
-                    showNotification("已下載檔案，請在 LINE 內夾帶傳送", "success");
+                    console.error("分享失敗:", error);
+                    showNotification("無法啟動檔案分享，已改為下載檔案，請手動至 LINE 傳送", "error");
+                    handleExportExcel();
                 }
             };
 
