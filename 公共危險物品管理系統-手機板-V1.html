@@ -739,39 +739,49 @@
                 showNotification("匯出成功！", "success");
             };
 
-            // ====== 針對安卓優化：強制呼叫 Web Share API 系統原生分享選單 ======
+            // ====== 分享至 LINE (雙重保險機制) ======
             const handleShareLine = async () => {
                 if (filteredRecords.length === 0) { showNotification("目前沒有資料可供分享！", "error"); return; }
 
+                const blob = generateExcelBlob();
+                const fileName = `公共危險物品庫存報告_${new Date().toISOString().slice(0,10)}.xlsx`;
+                let textMsg = `【龍科廠-公共危險物品庫存報告】\n區間: ${filterStartDate || '最初'} ~ ${filterEndDate || '最新'}\n共計 ${filteredRecords.length} 筆資料。`;
+
                 try {
-                    // 1. 產生真正的 EXCEL 檔案物件 (File Object)
-                    const blob = generateExcelBlob();
-                    const fileName = `公共危險物品庫存報告_${new Date().toISOString().slice(0,10)}.xlsx`;
-                    
-                    // 明確給予 MIME Type 讓安卓系統正確識別這是一個 Excel 附檔
+                    // 1. 優先嘗試：原生分享選單 (唯一能直接夾帶檔案的合法途徑)
                     const file = new File([blob], fileName, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-                    // 2. 準備摘要文字
-                    let textMsg = `【龍科廠-公共危險物品庫存報告】\n區間: ${filterStartDate || '最初'} ~ ${filterEndDate || '最新'}\n共計 ${filteredRecords.length} 筆資料。`;
-
-                    // 3. 直接強制呼叫安卓系統原生分享 (移除原本的 canShare 檢查，避免安卓誤判攔截)
-                    if (navigator.share) {
+                    
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
                         await navigator.share({
                             files: [file],
                             title: '公共危險物品庫存報告',
                             text: textMsg
                         });
-                        // 呼叫成功後，手機底部會滑出分享清單，請直接點擊「LINE」即可。
+                        return; // 成功則結束
                     } else {
-                        throw new Error("您的裝置或瀏覽器不支援原生分享");
+                        throw new Error("裝置不支援原生分享");
                     }
                 } catch (error) {
-                    // 忽略使用者按「取消」或點擊背景關閉選單導致的錯誤
-                    if (error.name !== 'AbortError') {
-                        console.error("系統分享呼叫失敗:", error);
-                        showNotification("系統原生分享遭瀏覽器阻擋，已改為直接下載檔案。", "error");
-                        handleExportExcel(); // 失敗備案：直接下載
-                    }
+                    if (error.name === 'AbortError') return; // 忽略使用者按取消
+                    
+                    // 2. 備用方案：自動下載檔案 + 強制開啟 LINE APP
+                    console.log("切換為跳轉 LINE 模式");
+                    
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+                    // 加上引導附加檔案的文字
+                    let fallbackMsg = `${textMsg}\n\n👉 [系統提示] EXCEL 報表已經自動下載到您的手機，請點擊左下角「+」>「檔案」將其傳送。`;
+                    
+                    // 直接開啟 LINE
+                    window.location.href = `https://line.me/R/msg/text/?${encodeURIComponent(fallbackMsg)}`;
+                    showNotification("已下載檔案，請在 LINE 內夾帶傳送", "success");
                 }
             };
 
