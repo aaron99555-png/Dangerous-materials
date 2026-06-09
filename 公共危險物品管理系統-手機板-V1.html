@@ -841,6 +841,9 @@
             const [notification, setNotification] = useState(null);
             const [deleteModal, setDeleteModal] = useState({ isOpen: false, targetIds: [] });
             
+            // --- 新增：申請量超標警告 Modal 狀態 ---
+            const [overLimitWarning, setOverLimitWarning] = useState({ isOpen: false, data: null, details: {} });
+
             useEffect(() => {
                 const handleContextMenu = (e) => { e.preventDefault(); };
                 document.addEventListener('contextmenu', handleContextMenu);
@@ -912,14 +915,8 @@
                 setNewChemData({ name, ...chem });
             }
 
-            const handleAddRecord = async (e) => {
-                e.preventDefault();
-                if (!chemicalDB[formData.chemical]) { showNotification("請選擇清單內的化學品！若需新增請使用『化學品管理』功能。", "error"); return; }
-                if (!formData.chemical || !formData.amount || !formData.date || !formData.location) { showNotification("請填寫所有欄位 (包含儲存場所)！", "error"); return; }
-                
-                const details = chemicalDB[formData.chemical] || { labelCategory: "", partNo: "", hazard: "", type: "", solubility: "", limit: 0, flashPoint: 0 };
-                const recordData = { ...formData, amount: parseFloat(formData.amount), ...details, timestamp: Date.now() };
-                
+            // --- 實際執行儲存的共用函式 ---
+            const executeSaveRecord = (recordData) => {
                 if (editId) {
                     setRecords(prev => prev.map(r => r.id === editId ? { ...recordData, id: editId } : r));
                     showNotification("資料修改成功！", "success");
@@ -932,6 +929,64 @@
                 
                 if (editId) { setFormData({ date: today, chemical: '', location: '', amount: '' }); } 
                 else { setFormData(prev => ({ ...prev, chemical: '', amount: '' })); }
+            };
+
+            // --- 攔截並驗證是否超過「該日」申請量 ---
+            const handleAddRecord = async (e) => {
+                e.preventDefault();
+                if (!chemicalDB[formData.chemical]) { showNotification("請選擇清單內的化學品！若需新增請使用『化學品管理』功能。", "error"); return; }
+                if (!formData.chemical || !formData.amount || !formData.date || !formData.location) { showNotification("請填寫所有欄位 (包含儲存場所)！", "error"); return; }
+                
+                const details = chemicalDB[formData.chemical] || { labelCategory: "", partNo: "", hazard: "", type: "", solubility: "", limit: 0, flashPoint: 0 };
+                const parsedAmount = parseFloat(formData.amount);
+                const recordData = { ...formData, amount: parsedAmount, ...details, timestamp: Date.now() };
+                
+                // 1. 判斷屬於哪個儲存區域與對應的 Config
+                const isWarehouse = formData.location === '危險品庫房';
+                const isL30 = ['C4原膠室', 'P1原膠室'].includes(formData.location);
+                const targetConfig = isWarehouse ? WAREHOUSE_STATS_CONFIG : (isL30 ? L30_STATS_CONFIG : []);
+                
+                // 2. 找到該化學品在設定檔中的「合法申請量」
+                const normCat = normalizeLabelCategory(details.labelCategory);
+                const typeGroup = targetConfig.find(g => g.type === details.type);
+                const configItem = typeGroup?.items.find(i => i.name === normCat);
+                const appLimit = configItem ? configItem.limit : 0;
+                
+                // 3. 計算「該日」「該場所」「該分類」現有總量
+                let currentTotal = 0;
+                records.forEach(r => {
+                    const rIsWarehouse = r.location === '危險品庫房';
+                    const rIsL30 = ['C4原膠室', 'P1原膠室'].includes(r.location);
+                    
+                    // 只統計同一個日期、同一個大範圍場所 (庫房 or L30)
+                    if (r.date === formData.date && ((isWarehouse && rIsWarehouse) || (isL30 && rIsL30))) {
+                        if (r.type === details.type && normalizeLabelCategory(r.labelCategory) === normCat) {
+                            if (editId && r.id === editId) return; // 略過正在編輯的舊資料 (不要重複算自己)
+                            currentTotal += (Number(r.amount) || 0);
+                        }
+                    }
+                });
+
+                const newTotal = currentTotal + parsedAmount;
+
+                // 4. 若加總大於合法申請量，則攔截並跳出警告 Modal
+                if (newTotal > appLimit) {
+                    setOverLimitWarning({
+                        isOpen: true,
+                        data: recordData,
+                        details: {
+                            date: formData.date,
+                            location: isWarehouse ? '危險品庫房' : 'L30原膠室(C4+P1)',
+                            category: `${details.type} - ${normCat}`,
+                            limit: appLimit,
+                            newTotal: newTotal
+                        }
+                    });
+                    return; // 中止執行，等待使用者按下 Modal 按鈕
+                }
+                
+                // 5. 若未超過，則正常儲存
+                executeSaveRecord(recordData);
             };
             
             const handleEdit = (record) => { setFormData({ date: record.date, chemical: record.chemical, location: record.location, amount: record.amount }); setEditId(record.id); window.scrollTo({ top: 0, behavior: 'smooth' }); showNotification("已載入資料，請在左側表單修改", "success"); };
@@ -1197,6 +1252,61 @@
                             </button>
                         </div>
                     </div>
+
+                    {/* 超過申請量警告 Modal */}
+                    {overLimitWarning.isOpen && (
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] px-4">
+                            <div className="bg-white rounded-2xl shadow-2xl p-6 md:p-8 w-full max-w-md mx-auto animate-scale-up border border-red-100 flex flex-col items-center text-center">
+                                <div className="bg-red-50 p-4 rounded-full mb-4">
+                                    <AlertTriangle className="text-red-500" size={48} />
+                                </div>
+                                <h3 className="text-xl font-black text-red-600 mb-2">庫存超過申請量<br className="md:hidden"/>請調整庫存周轉率</h3>
+                                
+                                <div className="text-slate-600 mb-6 mt-2 text-sm bg-slate-50 p-4 rounded-xl border border-slate-100 w-full text-left space-y-2 shadow-inner">
+                                    <div className="flex justify-between border-b border-slate-200 pb-1">
+                                        <span className="font-bold text-slate-500">盤點日期:</span> 
+                                        <span className="font-bold text-slate-800">{overLimitWarning.details.date}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b border-slate-200 pb-1">
+                                        <span className="font-bold text-slate-500">場所:</span> 
+                                        <span className="font-bold text-slate-800">{overLimitWarning.details.location}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b border-slate-200 pb-1">
+                                        <span className="font-bold text-slate-500">分類:</span> 
+                                        <span className="font-bold text-slate-800">{overLimitWarning.details.category}</span>
+                                    </div>
+                                    <div className="flex justify-between border-b border-slate-200 pb-1">
+                                        <span className="font-bold text-slate-500">合法申請量:</span> 
+                                        <span className="font-bold text-slate-800">{overLimitWarning.details.limit.toLocaleString()} L</span>
+                                    </div>
+                                    <div className="flex justify-between mt-2 pt-1">
+                                        <span className="font-bold text-red-500">加總後該日存量:</span> 
+                                        <span className="font-black text-red-600 text-base">{overLimitWarning.details.newTotal.toLocaleString()} L</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 w-full">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setOverLimitWarning({ isOpen: false, data: null, details: {} })}
+                                        className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                                    >
+                                        返回修改
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            executeSaveRecord(overLimitWarning.data);
+                                            setOverLimitWarning({ isOpen: false, data: null, details: {} });
+                                        }}
+                                        className="flex-1 px-4 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-200"
+                                    >
+                                        我了解
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* 刪除確認 Modal */}
                     {deleteModal.isOpen && (
