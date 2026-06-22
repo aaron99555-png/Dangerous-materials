@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>BML 公共危險品管理系統</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -41,14 +41,14 @@
 <body class="h-screen w-screen overflow-hidden bg-slate-50 text-slate-800 font-sans flex flex-col relative">
 
   <!-- 庫存超標預警 Modal -->
-  <div id="warningModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-[100] backdrop-blur-sm">
-    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 border-t-4 border-red-500">
+  <div id="warningModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
+    <div class="bg-white rounded-xl shadow-2xl p-5 md:p-6 w-full max-w-md border-t-4 border-red-500 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center gap-3 text-red-600 mb-4">
-        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
-        <h3 class="text-lg font-bold">庫存超過申請量警告</h3>
+        <i data-lucide="alert-triangle" class="w-6 h-6 shrink-0"></i>
+        <h3 class="text-base md:text-lg font-bold">庫存超過申請量警告</h3>
       </div>
-      <p id="modalMsg" class="text-slate-700 font-medium mb-4"></p>
-      <div class="bg-red-50/50 p-4 rounded-lg mb-6 text-sm flex flex-col gap-2 border border-red-100">
+      <p id="modalMsg" class="text-slate-700 font-medium mb-4 text-sm md:text-base"></p>
+      <div class="bg-red-50/50 p-3 md:p-4 rounded-lg mb-6 text-sm flex flex-col gap-2 border border-red-100">
         <div class="flex justify-between"><span class="text-slate-500">合法申請量:</span> <span id="modalApplyAmt" class="font-semibold text-slate-800"></span></div>
         <div class="flex justify-between"><span class="text-slate-500">該日已有庫存:</span> <span id="modalCurrentTotal" class="font-semibold text-slate-800"></span></div>
         <div class="flex justify-between"><span class="text-slate-500">本次輸入量:</span> <span id="modalInputAmt" class="font-semibold text-blue-600"></span></div>
@@ -56,41 +56,41 @@
         <div class="flex justify-between"><span class="text-slate-600 font-medium">預計總庫存:</span> <span id="modalProjected" class="font-semibold text-slate-800"></span></div>
         <div class="flex justify-between text-red-600 font-bold"><span class="text-red-500">超標量:</span> <span id="modalExcess"></span></div>
       </div>
-      <div class="flex justify-end gap-3">
-        <button id="btnCancelSave" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors font-medium">返回修改</button>
-        <button id="btnForceSave" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors font-medium shadow-sm">我了解，仍要儲存</button>
+      <div class="flex flex-col-reverse md:flex-row justify-end gap-3">
+        <button id="btnCancelSave" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors font-medium text-sm md:text-base">返回修改</button>
+        <button id="btnForceSave" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors font-medium shadow-sm text-sm md:text-base">我了解，仍要儲存</button>
       </div>
     </div>
   </div>
 
   <!-- Header (固定於頂部) -->
-  <header class="shrink-0 bg-benq-main text-white px-6 py-4 shadow-md flex justify-between items-center z-10">
-    <div class="flex items-center gap-3">
-      <i data-lucide="activity" class="w-6 h-6"></i>
-      <h1 class="text-xl font-bold tracking-wide">BML 公共危險品管理系統</h1>
+  <header class="shrink-0 bg-benq-main text-white px-4 md:px-6 py-3 md:py-4 shadow-md flex flex-col sm:flex-row justify-between items-center z-10 gap-2 sm:gap-0">
+    <div class="flex items-center gap-2 md:gap-3 w-full sm:w-auto justify-center sm:justify-start">
+      <i data-lucide="activity" class="w-5 h-5 md:w-6 md:h-6 shrink-0"></i>
+      <h1 class="text-lg md:text-xl font-bold tracking-wide truncate">BML 公共危險品管理系統</h1>
     </div>
-    <div id="updateTime" class="text-sm opacity-80"></div>
+    <div id="updateTime" class="text-xs md:text-sm opacity-80 text-center sm:text-right w-full sm:w-auto"></div>
   </header>
 
-  <!-- 主要框架區塊 (Flex延展) -->
-  <div class="flex flex-1 overflow-hidden min-h-0">
+  <!-- 主要框架區塊 (Flex延展：手機版直式，電腦版橫式) -->
+  <div class="flex flex-col md:flex-row flex-1 overflow-hidden min-h-0">
     
-    <!-- 左側：儲存量輸入區 (可獨立滾動) -->
-    <aside class="w-80 shrink-0 bg-white border-r border-slate-200 p-6 flex flex-col shadow-sm z-0 overflow-y-auto">
-      <div class="flex items-center gap-2 mb-6 text-benq-main">
-        <i data-lucide="plus" class="w-5 h-5"></i>
-        <h2 class="text-lg font-semibold">儲存量輸入</h2>
+    <!-- 左側：儲存量輸入區 (手機版限制最大高度並可獨立滾動) -->
+    <aside class="w-full md:w-80 max-h-[40vh] md:max-h-full shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex flex-col shadow-sm z-0 overflow-y-auto">
+      <div class="flex items-center gap-2 mb-4 md:mb-6 text-benq-main shrink-0">
+        <i data-lucide="plus" class="w-4 h-4 md:w-5 md:h-5"></i>
+        <h2 class="text-base md:text-lg font-semibold">儲存量輸入</h2>
       </div>
       
-      <form id="inputForm" class="flex flex-col gap-5">
+      <form id="inputForm" class="flex flex-col gap-4 md:gap-5">
         <div>
-          <label class="block text-sm font-medium text-slate-600 mb-1">盤點日期 *</label>
-          <input type="date" id="inputDate" class="w-full border border-slate-300 rounded-md p-2.5 focus:ring-2 focus:ring-benq-main outline-none" required />
+          <label class="block text-xs md:text-sm font-medium text-slate-600 mb-1">盤點日期 *</label>
+          <input type="date" id="inputDate" class="w-full border border-slate-300 rounded-md p-2 md:p-2.5 text-sm md:text-base focus:ring-2 focus:ring-benq-main outline-none" required />
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-slate-600 mb-1">儲存區域 *</label>
-          <select id="inputLocation" class="w-full border border-slate-300 rounded-md p-2.5 focus:ring-2 focus:ring-benq-main outline-none bg-white" required>
+          <label class="block text-xs md:text-sm font-medium text-slate-600 mb-1">儲存區域 *</label>
+          <select id="inputLocation" class="w-full border border-slate-300 rounded-md p-2 md:p-2.5 text-sm md:text-base focus:ring-2 focus:ring-benq-main outline-none bg-white" required>
             <option value="" disabled selected>請先選擇儲存區域...</option>
             <option value="危險品庫房">危險品庫房</option>
             <option value="原膠室(C4+P1)">原膠室(C4+P1)</option>
@@ -98,120 +98,120 @@
         </div>
 
         <div class="relative">
-          <label class="block text-sm font-medium text-slate-600 mb-1">化學品名稱 *</label>
+          <label class="block text-xs md:text-sm font-medium text-slate-600 mb-1">化學品名稱 *</label>
           <div class="relative">
-            <i data-lucide="search" class="absolute left-3 top-3 w-4 h-4 text-slate-400"></i>
-            <input type="text" id="chemSearchInput" placeholder="搜尋並點選化學品..." class="w-full border border-slate-300 rounded-md py-2.5 pl-9 pr-8 focus:ring-2 focus:ring-benq-main outline-none bg-white text-sm" required autocomplete="off" />
-            <button type="button" id="btnClearChem" class="absolute right-8 top-3 text-slate-400 hover:text-benq-main hidden">
+            <i data-lucide="search" class="absolute left-3 top-2.5 md:top-3 w-4 h-4 text-slate-400"></i>
+            <input type="text" id="chemSearchInput" placeholder="搜尋並點選化學品..." class="w-full border border-slate-300 rounded-md py-2 md:py-2.5 pl-9 pr-8 focus:ring-2 focus:ring-benq-main outline-none bg-white text-sm md:text-base" required autocomplete="off" />
+            <button type="button" id="btnClearChem" class="absolute right-8 top-2.5 md:top-3 text-slate-400 hover:text-benq-main hidden">
               <i data-lucide="x" class="w-4 h-4"></i>
             </button>
-            <i data-lucide="chevron-down" class="absolute right-3 top-3 w-4 h-4 text-slate-400 pointer-events-none"></i>
+            <i data-lucide="chevron-down" class="absolute right-3 top-2.5 md:top-3 w-4 h-4 text-slate-400 pointer-events-none"></i>
           </div>
-          <div id="chemDropdown" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-y-auto hidden"></div>
+          <div id="chemDropdown" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-48 md:max-h-60 overflow-y-auto hidden"></div>
           
-          <div id="chemInfoPanel" class="mt-3 p-3 bg-purple-50/50 rounded-lg border border-purple-100 text-sm hidden"></div>
+          <div id="chemInfoPanel" class="mt-3 p-3 bg-purple-50/50 rounded-lg border border-purple-100 text-xs md:text-sm hidden"></div>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-600 mb-1">儲存量 (kg/L) *</label>
+          <label class="block text-xs md:text-sm font-medium text-slate-600 mb-1">儲存量 (kg/L) *</label>
           <div class="relative">
-            <input type="number" step="0.01" id="inputStorageAmt" placeholder="輸入數值" class="w-full border border-slate-300 rounded-md p-2.5 focus:ring-2 focus:ring-benq-main outline-none pr-10" required />
-            <button type="button" id="btnClearStorage" class="absolute right-12 top-3 text-slate-400 hover:text-benq-main hidden">
+            <input type="number" step="0.01" id="inputStorageAmt" placeholder="輸入數值" class="w-full border border-slate-300 rounded-md p-2 md:p-2.5 text-sm md:text-base focus:ring-2 focus:ring-benq-main outline-none pr-10" required />
+            <button type="button" id="btnClearStorage" class="absolute right-12 top-2.5 md:top-3 text-slate-400 hover:text-benq-main hidden">
               <i data-lucide="x" class="w-4 h-4"></i>
             </button>
-            <span class="absolute right-3 top-2.5 text-slate-400 text-sm pointer-events-none">kg/L</span>
+            <span class="absolute right-3 top-2 md:top-2.5 text-slate-400 text-xs md:text-sm pointer-events-none">kg/L</span>
           </div>
         </div>
 
-        <div class="flex gap-2 mt-2">
-          <button type="submit" id="btnSubmit" class="flex-1 text-white font-medium py-2.5 rounded-md transition-colors shadow-sm bg-benq-main hover:bg-benq-dark">儲存資料</button>
-          <button type="button" id="btnClearForm" class="bg-slate-200 hover:bg-slate-300 text-slate-600 px-4 py-2.5 rounded-md transition-colors shadow-sm" title="清除表單重置">
-            <i data-lucide="eraser" class="w-5 h-5"></i>
+        <div class="flex gap-2 mt-1 md:mt-2 pb-2 md:pb-0">
+          <button type="submit" id="btnSubmit" class="flex-1 text-white font-medium py-2 md:py-2.5 text-sm md:text-base rounded-md transition-colors shadow-sm bg-benq-main hover:bg-benq-dark">儲存資料</button>
+          <button type="button" id="btnClearForm" class="bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 md:px-4 py-2 md:py-2.5 rounded-md transition-colors shadow-sm" title="清除表單重置">
+            <i data-lucide="eraser" class="w-4 h-4 md:w-5 md:h-5"></i>
           </button>
         </div>
-        <div id="editingBadge" class="text-xs text-amber-600 text-center -mt-3 hidden">目前處於「修改」模式</div>
+        <div id="editingBadge" class="text-xs text-amber-600 text-center -mt-2 md:-mt-3 hidden">目前處於「修改」模式</div>
       </form>
     </aside>
 
-    <!-- 右側：資料呈現與分析區 (此區塊禁止滾動，將滾動權交給下方內容) -->
-    <main class="flex-1 p-6 overflow-hidden bg-slate-50 flex flex-col min-w-0 min-h-0">
+    <!-- 右側：資料呈現與分析區 -->
+    <main class="flex-1 p-3 md:p-6 overflow-hidden bg-slate-50 flex flex-col min-w-0 min-h-0">
       
-      <!-- 功能列 (固定不滾動) -->
-      <div class="shrink-0 bg-white p-4 rounded-lg shadow-sm border border-slate-200 mb-4 flex flex-col xl:flex-row gap-4 xl:items-end justify-between">
-        <div class="flex flex-wrap gap-4 items-end flex-1">
+      <!-- 功能列 (固定不滾動，適配手機版) -->
+      <div class="shrink-0 bg-white p-3 md:p-4 rounded-lg shadow-sm border border-slate-200 mb-3 md:mb-4 flex flex-col xl:flex-row gap-3 xl:items-end justify-between">
+        <div class="grid grid-cols-2 lg:flex lg:flex-wrap gap-3 items-end flex-1">
           <div>
-            <label class="block text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i>開始日期</label>
-            <input type="date" id="filterStart" class="border border-slate-300 rounded p-1.5 text-sm focus:ring-benq-main outline-none"/>
+            <label class="block text-[10px] md:text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i>開始日期</label>
+            <input type="date" id="filterStart" class="w-full border border-slate-300 rounded p-1.5 text-xs md:text-sm focus:ring-benq-main outline-none"/>
           </div>
           <div>
-            <label class="block text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i>結束日期</label>
-            <input type="date" id="filterEnd" class="border border-slate-300 rounded p-1.5 text-sm focus:ring-benq-main outline-none"/>
+            <label class="block text-[10px] md:text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i>結束日期</label>
+            <input type="date" id="filterEnd" class="w-full border border-slate-300 rounded p-1.5 text-xs md:text-sm focus:ring-benq-main outline-none"/>
           </div>
           <div>
-            <label class="block text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i>儲存區域</label>
-            <select id="filterLocation" class="border border-slate-300 rounded p-1.5 text-sm bg-white min-w-[120px] focus:ring-benq-main outline-none">
+            <label class="block text-[10px] md:text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i>儲存區域</label>
+            <select id="filterLocation" class="w-full border border-slate-300 rounded p-1.5 text-xs md:text-sm bg-white focus:ring-benq-main outline-none">
               <option value="">全區域</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="layers" class="w-3 h-3"></i>類別</label>
-            <select id="filterClass" class="border border-slate-300 rounded p-1.5 text-sm bg-white min-w-[120px] focus:ring-benq-main outline-none">
+            <label class="block text-[10px] md:text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="layers" class="w-3 h-3"></i>類別</label>
+            <select id="filterClass" class="w-full border border-slate-300 rounded p-1.5 text-xs md:text-sm bg-white focus:ring-benq-main outline-none">
               <option value="">全類別</option>
             </select>
           </div>
-          <div>
-            <label class="block text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="filter" class="w-3 h-3"></i>化學品名稱</label>
-            <div class="relative w-32">
-              <input type="text" id="filterName" placeholder="搜尋名稱..." class="w-full border border-slate-300 rounded p-1.5 pr-6 text-sm focus:ring-benq-main outline-none"/>
-              <button type="button" id="btnClearFilterName" class="absolute right-1.5 top-2 text-slate-400 hover:text-benq-main hidden">
-                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+          <div class="col-span-2 lg:col-span-1">
+            <label class="block text-[10px] md:text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="filter" class="w-3 h-3"></i>化學品名稱</label>
+            <div class="relative w-full lg:w-32">
+              <input type="text" id="filterName" placeholder="搜尋名稱..." class="w-full border border-slate-300 rounded p-1.5 pr-6 text-xs md:text-sm focus:ring-benq-main outline-none"/>
+              <button type="button" id="btnClearFilterName" class="absolute right-1.5 top-1.5 md:top-2 text-slate-400 hover:text-benq-main hidden">
+                <i data-lucide="x" class="w-3 md:w-3.5 h-3 md:h-3.5"></i>
               </button>
             </div>
           </div>
         </div>
         
-        <div class="flex gap-2 shrink-0">
-          <button id="btnClearFilters" class="flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-md text-sm border border-slate-300 transition-colors">
-            <i data-lucide="eraser" class="w-4 h-4"></i> 清除篩選
+        <div class="flex flex-wrap gap-2 shrink-0 mt-1 xl:mt-0">
+          <button id="btnClearFilters" class="flex-1 md:flex-none justify-center flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 md:px-3 py-1.5 rounded-md text-xs md:text-sm border border-slate-300 transition-colors">
+            <i data-lucide="eraser" class="w-3.5 h-3.5 md:w-4 md:h-4"></i> 清除
           </button>
-          <label class="cursor-pointer flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md text-sm border border-slate-300 transition-colors ml-2">
-            <i data-lucide="upload" class="w-4 h-4"></i> 匯入 Excel
+          <label class="flex-1 md:flex-none justify-center cursor-pointer flex items-center gap-1 md:gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 md:px-3 py-1.5 rounded-md text-xs md:text-sm border border-slate-300 transition-colors">
+            <i data-lucide="upload" class="w-3.5 h-3.5 md:w-4 md:h-4"></i> 匯入
             <input type="file" id="fileUpload" accept=".xlsx, .xls" class="hidden" />
           </label>
-          <button id="btnExportExcel" class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-md text-sm transition-colors shadow-sm">
-            <i data-lucide="download" class="w-4 h-4"></i> 匯出 Excel
+          <button id="btnExportExcel" class="flex-1 md:flex-none justify-center flex items-center gap-1 md:gap-2 bg-green-600 hover:bg-green-700 text-white px-2 md:px-3 py-1.5 rounded-md text-xs md:text-sm transition-colors shadow-sm">
+            <i data-lucide="download" class="w-3.5 h-3.5 md:w-4 md:h-4"></i> 匯出
           </button>
-          <button id="btnShareLine" class="flex items-center gap-2 bg-[#06C755] hover:bg-[#05b34c] text-white px-3 py-1.5 rounded-md text-sm transition-colors shadow-sm">
-            <i data-lucide="share-2" class="w-4 h-4"></i> 分享至 LINE
+          <button id="btnShareLine" class="flex-1 md:flex-none justify-center flex items-center gap-1 md:gap-2 bg-[#06C755] hover:bg-[#05b34c] text-white px-2 md:px-3 py-1.5 rounded-md text-xs md:text-sm transition-colors shadow-sm">
+            <i data-lucide="share-2" class="w-3.5 h-3.5 md:w-4 md:h-4"></i> 分享
           </button>
         </div>
       </div>
 
-      <!-- 頁籤選單 (固定不滾動) -->
-      <div class="shrink-0 flex bg-white rounded-t-lg border-b border-slate-200 px-2 pt-2 gap-2 shadow-sm">
-        <button id="tabSummary" class="px-6 py-2.5 rounded-t-lg font-medium text-sm transition-colors flex items-center gap-2 bg-benq-main text-white shadow-sm">
+      <!-- 頁籤選單 (固定不滾動，手機端橫向滾動) -->
+      <div class="shrink-0 flex overflow-x-auto hide-scrollbar bg-white rounded-t-lg border-b border-slate-200 px-2 pt-2 gap-2 shadow-sm">
+        <button id="tabSummary" class="whitespace-nowrap px-4 md:px-6 py-2 md:py-2.5 rounded-t-lg font-medium text-xs md:text-sm transition-colors flex items-center gap-2 bg-benq-main text-white shadow-sm">
           <i data-lucide="file-text" class="w-4 h-4"></i> 管制表彙整
         </button>
-        <button id="tabList" class="px-6 py-2.5 rounded-t-lg font-medium text-sm transition-colors flex items-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200">
+        <button id="tabList" class="whitespace-nowrap px-4 md:px-6 py-2 md:py-2.5 rounded-t-lg font-medium text-xs md:text-sm transition-colors flex items-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200">
           <i data-lucide="list" class="w-4 h-4"></i> 化學品清單
         </button>
-        <button id="tabChart" class="px-6 py-2.5 rounded-t-lg font-medium text-sm transition-colors flex items-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200">
+        <button id="tabChart" class="whitespace-nowrap px-4 md:px-6 py-2 md:py-2.5 rounded-t-lg font-medium text-xs md:text-sm transition-colors flex items-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200">
           <i data-lucide="activity" class="w-4 h-4"></i> 趨勢圖表
         </button>
       </div>
 
       <!-- 🌟 內容區塊 (動態捲軸完美作用的關鍵：flex-1, min-h-0, overflow-y-auto) 🌟 -->
-      <div class="flex-1 min-h-0 overflow-y-auto bg-white border border-t-0 border-slate-200 p-6 rounded-b-lg shadow-sm">
+      <div class="flex-1 min-h-0 overflow-y-auto bg-white border border-t-0 border-slate-200 p-3 md:p-6 rounded-b-lg shadow-sm">
         
         <!-- Sheet 1：管制表彙整 -->
         <div id="viewSummary" class="animate-in fade-in duration-300 flex flex-col gap-4">
-          <div class="shrink-0 flex items-center justify-between bg-purple-50 p-3 rounded-lg border border-purple-100 shadow-sm">
-            <h3 class="text-lg font-bold text-benq-dark flex items-center gap-2">
-              <i data-lucide="file-text" class="w-5 h-5"></i> 管制表彙整
+          <div class="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-purple-50 p-3 rounded-lg border border-purple-100 shadow-sm">
+            <h3 class="text-base md:text-lg font-bold text-benq-dark flex items-center gap-2">
+              <i data-lucide="file-text" class="w-4 h-4 md:w-5 md:h-5"></i> 管制表彙整
             </h3>
-            <div class="flex items-center gap-2">
-              <label class="text-sm text-benq-dark font-medium">盤點日：</label>
-              <select id="reportDateSelect" class="border border-purple-300 rounded p-1.5 text-sm bg-white focus:ring-benq-main outline-none min-w-[120px]"></select>
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <label class="text-xs md:text-sm text-benq-dark font-medium shrink-0">盤點日：</label>
+              <select id="reportDateSelect" class="w-full sm:w-auto border border-purple-300 rounded p-1.5 text-xs md:text-sm bg-white focus:ring-benq-main outline-none min-w-[120px]"></select>
             </div>
           </div>
           <!-- 內部表單容器，高度自由長高，由外層 parent 控制滾動 -->
@@ -221,24 +221,24 @@
         <!-- Sheet 2：化學品清單 -->
         <div id="viewList" class="animate-in fade-in duration-300 hidden flex-col">
           <div class="shrink-0 p-3 bg-purple-50 border border-purple-100 rounded-t-lg flex justify-between items-center">
-            <h3 class="font-bold text-benq-dark flex items-center gap-2">
+            <h3 class="font-bold text-benq-dark flex items-center gap-2 text-sm md:text-base">
               <i data-lucide="list" class="w-4 h-4"></i> 化學品清單紀錄
             </h3>
-            <span id="listCount" class="text-xs bg-purple-100 text-benq-main px-2 py-1 rounded-full"></span>
+            <span id="listCount" class="text-[10px] md:text-xs bg-purple-100 text-benq-main px-2 py-1 rounded-full"></span>
           </div>
           <div class="overflow-x-auto border border-t-0 border-slate-200 rounded-b-lg">
-            <table class="w-full text-sm text-left break-words">
-              <thead class="text-xs text-slate-600 bg-slate-50 uppercase sticky top-0 shadow-sm z-10">
+            <table class="w-full text-xs md:text-sm text-left break-words">
+              <thead class="text-[10px] md:text-xs text-slate-600 bg-slate-50 uppercase sticky top-0 shadow-sm z-10">
                 <tr>
-                  <th class="px-4 py-3 border-b border-slate-200">盤點日期</th>
-                  <th class="px-4 py-3 border-b border-slate-200">儲存場所</th>
-                  <th class="px-4 py-3 border-b border-slate-200">標示版歸類</th>
-                  <th class="px-4 py-3 border-b border-slate-200">類別</th>
-                  <th class="px-4 py-3 border-b border-slate-200">化學品名稱</th>
-                  <th class="px-4 py-3 border-b border-slate-200 text-right">儲存量</th>
-                  <th class="px-4 py-3 border-b border-slate-200 text-right">管制量</th>
-                  <th class="px-4 py-3 border-b border-slate-200 text-center">倍數</th>
-                  <th class="px-4 py-3 border-b border-slate-200 text-center font-bold w-24">操作</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">盤點日期</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">儲存場所</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">標示版歸類</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">類別</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 min-w-[120px]">化學品名稱</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 text-right whitespace-nowrap">儲存量</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 text-right whitespace-nowrap">管制量</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 text-center whitespace-nowrap">倍數</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 text-center font-bold w-16 md:w-24">操作</th>
                 </tr>
               </thead>
               <tbody id="listBody"></tbody>
@@ -247,12 +247,19 @@
         </div>
 
         <!-- Sheet 3：趨勢圖表 -->
-        <div id="viewChart" class="animate-in fade-in duration-300 hidden flex-col min-h-[500px]">
-          <h3 class="shrink-0 text-lg font-semibold text-benq-dark mb-4 flex items-center gap-2">
+        <div id="viewChart" class="animate-in fade-in duration-300 hidden flex-col min-h-[400px]">
+          <h3 class="shrink-0 text-base md:text-lg font-semibold text-benq-dark mb-3 md:mb-4 flex items-center gap-2">
             <i data-lucide="activity" class="w-4 h-4 text-benq-main"></i> 儲存量變化趨勢圖 (依化學品)
           </h3>
-          <div class="flex-1 w-full relative min-h-[400px]">
-            <div id="chartNoData" class="absolute inset-0 flex items-center justify-center bg-white/80 z-10 text-slate-500 hidden">尚無符合條件的資料</div>
+          
+          <div class="mb-4 shrink-0">
+            <label class="block text-xs md:text-sm font-bold mb-2 text-slate-700">選擇化學品 (按住 Ctrl 或 Command 鍵可進行複選)：</label>
+            <select id="multiChemSelect" multiple class="w-full border border-slate-300 p-2 md:p-3 rounded-lg h-32 md:h-40 bg-slate-50 text-xs md:text-sm focus:ring-2 focus:ring-benq-main shadow-inner"></select>
+            <p class="text-[10px] text-slate-400 mt-1 italic">提示：在手機或平板上，請長按或連續點擊欲選擇的項目來進行多選。</p>
+          </div>
+
+          <div class="flex-1 w-full relative min-h-[300px] md:min-h-[400px]">
+            <div id="chartNoData" class="absolute inset-0 flex items-center justify-center bg-white/80 z-10 text-slate-500 text-sm hidden">尚無符合條件的資料或未選取化學品</div>
             <canvas id="myChart"></canvas>
           </div>
         </div>
@@ -342,7 +349,6 @@
       ]
     };
 
-    const chartColors = ['#5C2483', '#E6007E', '#00A8E1', '#8DC63F', '#F58220', '#FFC20E', '#64748b', '#ef4444'];
     const todayStr = new Date().toISOString().split('T')[0];
 
     // 全域狀態
@@ -367,7 +373,6 @@
     // --- DOM 元素選擇 ---
     const DOM = {
       updateTime: document.getElementById('updateTime'),
-      // Form
       inputDate: document.getElementById('inputDate'),
       inputLocation: document.getElementById('inputLocation'),
       chemSearchInput: document.getElementById('chemSearchInput'),
@@ -379,7 +384,6 @@
       btnSubmit: document.getElementById('btnSubmit'),
       btnClearForm: document.getElementById('btnClearForm'),
       editingBadge: document.getElementById('editingBadge'),
-      // Filters
       filterStart: document.getElementById('filterStart'),
       filterEnd: document.getElementById('filterEnd'),
       filterLocation: document.getElementById('filterLocation'),
@@ -391,7 +395,6 @@
       btnShareLine: document.getElementById('btnShareLine'),
       fileUpload: document.getElementById('fileUpload'),
       reportDateSelect: document.getElementById('reportDateSelect'),
-      // Tabs
       tabs: {
         summary: document.getElementById('tabSummary'),
         list: document.getElementById('tabList'),
@@ -402,12 +405,11 @@
         list: document.getElementById('viewList'),
         chart: document.getElementById('viewChart')
       },
-      // Content areas
       summaryContainer: document.getElementById('summaryContainer'),
       listBody: document.getElementById('listBody'),
       listCount: document.getElementById('listCount'),
       chartNoData: document.getElementById('chartNoData'),
-      // Modal
+      multiChemSelect: document.getElementById('multiChemSelect'),
       warningModal: document.getElementById('warningModal'),
       modalMsg: document.getElementById('modalMsg'),
       modalApplyAmt: document.getElementById('modalApplyAmt'),
@@ -430,8 +432,15 @@
       DOM.filterEnd.value = state.filters.endDate;
 
       updateFilterDropdowns();
+      initMultiChemSelect();
       attachEventListeners();
       processData();
+    }
+
+    // 初始化圖表多選清單
+    function initMultiChemSelect() {
+      const uniqueNames = [...new Set(baseChemicals.map(c => c.name))];
+      DOM.multiChemSelect.innerHTML = uniqueNames.map(name => `<option value="${name}">${name}</option>`).join('');
     }
 
     // --- 資料處理核心 ---
@@ -490,10 +499,10 @@
         const btn = DOM.tabs[tab];
         const view = DOM.views[tab];
         if (state.activeTab === tab) {
-          btn.className = 'px-6 py-2.5 rounded-t-lg font-medium text-sm transition-colors flex items-center gap-2 bg-benq-main text-white shadow-sm';
+          btn.className = 'whitespace-nowrap px-4 md:px-6 py-2 md:py-2.5 rounded-t-lg font-medium text-xs md:text-sm transition-colors flex items-center gap-2 bg-benq-main text-white shadow-sm';
           view.classList.remove('hidden');
         } else {
-          btn.className = 'px-6 py-2.5 rounded-t-lg font-medium text-sm transition-colors flex items-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200';
+          btn.className = 'whitespace-nowrap px-4 md:px-6 py-2 md:py-2.5 rounded-t-lg font-medium text-xs md:text-sm transition-colors flex items-center gap-2 bg-slate-100 text-slate-600 hover:bg-slate-200';
           view.classList.add('hidden');
         }
       });
@@ -559,44 +568,44 @@
         html += `
           <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col shrink-0">
             <div class="p-3 border-b flex flex-col md:flex-row gap-3 justify-between items-center ${headerColor}">
-              <h3 class="font-bold flex items-center gap-2 text-lg">
-                <i data-lucide="map-pin" class="w-5 h-5"></i> ${loc === '原膠室' ? '原膠室(C4+P1)' : loc}
+              <h3 class="font-bold flex items-center gap-2 text-base md:text-lg">
+                <i data-lucide="map-pin" class="w-4 h-4 md:w-5 md:h-5"></i> ${loc === '原膠室' ? '原膠室(C4+P1)' : loc}
               </h3>
-              <div class="flex items-center gap-4 text-sm bg-white/70 px-4 py-2 rounded-md border shadow-sm border-slate-200/50">
-                <div class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
-                  <span class="text-slate-500 font-medium text-xs md:text-sm">實際總儲存量:</span>
-                  <span class="font-bold text-benq-main text-base">${locTotalStorageAmt > 0 ? locTotalStorageAmt.toFixed(2) : '0.00'}</span> 
-                  <span class="text-slate-400 text-xs">kg/L</span>
+              <div class="flex items-center gap-2 md:gap-4 text-xs md:text-sm bg-white/70 px-3 md:px-4 py-2 rounded-md border shadow-sm border-slate-200/50 flex-wrap sm:flex-nowrap">
+                <div class="flex items-center gap-1 md:gap-2">
+                  <span class="text-slate-500 font-medium">實際總量:</span>
+                  <span class="font-bold text-benq-main text-sm md:text-base">${locTotalStorageAmt > 0 ? locTotalStorageAmt.toFixed(2) : '0.00'}</span> 
+                  <span class="text-slate-400">kg/L</span>
                 </div>
-                <div class="w-px h-6 bg-slate-300 hidden md:block"></div>
-                <div class="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
-                  <span class="text-slate-500 font-medium text-xs md:text-sm">實際總倍數:</span>
-                  <span class="font-bold text-benq-main text-base">${locTotalActualMultiple > 0 ? locTotalActualMultiple.toFixed(2) : '0.00'}</span>
+                <div class="w-px h-6 bg-slate-300 hidden sm:block"></div>
+                <div class="flex items-center gap-1 md:gap-2">
+                  <span class="text-slate-500 font-medium">總倍數:</span>
+                  <span class="font-bold text-benq-main text-sm md:text-base">${locTotalActualMultiple > 0 ? locTotalActualMultiple.toFixed(2) : '0.00'}</span>
                 </div>
-                <div class="w-px h-6 bg-slate-300 hidden md:block"></div>
-                <div class="font-bold px-2 py-1 rounded text-xs md:text-sm ${isLocPass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                <div class="w-px h-6 bg-slate-300 hidden sm:block"></div>
+                <div class="font-bold px-2 py-1 rounded w-full sm:w-auto text-center ${isLocPass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
                   ${isLocPass ? '✅ 總量符合' : '❌ 總量超標'}
                 </div>
               </div>
             </div>
             <div class="overflow-x-auto">
-              <table class="w-full text-sm text-left border-collapse break-words">
-                <thead class="text-xs text-slate-700 bg-slate-100 border-b-2 border-slate-300 text-center">
+              <table class="w-full text-xs md:text-sm text-left border-collapse break-words">
+                <thead class="text-[10px] md:text-xs text-slate-700 bg-slate-100 border-b-2 border-slate-300 text-center">
                   <tr>
-                    <th rowspan="2" class="px-3 py-3 border border-slate-200 align-middle bg-slate-200/50 w-24">危物種類</th>
-                    <th colspan="5" class="px-3 py-2 border border-slate-200 bg-purple-100/60 text-benq-dark text-sm tracking-wide">${loc === '原膠室' ? '原膠室(C4+P1)' : loc} 合法申請量(標示版)</th>
-                    <th colspan="3" class="px-3 py-2 border border-slate-200 bg-amber-100/60">實際儲存量及符合度依分類</th>
-                    <th rowspan="2" class="px-3 py-3 border border-slate-200 align-middle bg-emerald-100/60 w-32">危物種類<br/>符合度</th>
+                    <th rowspan="2" class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 align-middle bg-slate-200/50 w-20 md:w-24">危物種類</th>
+                    <th colspan="5" class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-purple-100/60 text-benq-dark tracking-wide">${loc === '原膠室' ? '原膠室(C4+P1)' : loc} 合法申請量</th>
+                    <th colspan="3" class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-amber-100/60">實際儲存量及符合度</th>
+                    <th rowspan="2" class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 align-middle bg-emerald-100/60 w-24 md:w-32">種類符合度</th>
                   </tr>
                   <tr>
-                    <th class="px-3 py-2 border border-slate-200 bg-purple-50 w-28">標示版分類</th>
-                    <th class="px-3 py-2 border border-slate-200 bg-purple-50 w-24">申請量</th>
-                    <th class="px-3 py-2 border border-slate-200 bg-purple-50 w-24">申請量加總</th>
-                    <th class="px-3 py-2 border border-slate-200 bg-purple-50 w-20">倍數</th>
-                    <th class="px-3 py-2 border border-slate-200 bg-purple-50 w-20">倍數加總</th>
-                    <th class="px-3 py-2 border border-slate-200 bg-amber-50 w-24">實際儲存量</th>
-                    <th class="px-3 py-2 border border-slate-200 bg-amber-50 w-24">超標量</th>
-                    <th class="px-3 py-2 border border-slate-200 bg-amber-50 w-24">符合度</th>
+                    <th class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-purple-50 w-24 md:w-28">標示版分類</th>
+                    <th class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-purple-50 w-20 md:w-24">申請量</th>
+                    <th class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-purple-50 w-20 md:w-24">量加總</th>
+                    <th class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-purple-50 w-16 md:w-20">倍數</th>
+                    <th class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-purple-50 w-16 md:w-20">倍加總</th>
+                    <th class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-amber-50 w-20 md:w-24">實際量</th>
+                    <th class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-amber-50 w-20 md:w-24">超標量</th>
+                    <th class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-amber-50 w-20 md:w-24">符合度</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -626,27 +635,27 @@
             html += `<tr class="${trClass}">`;
             
             if (rIdx === 0) {
-              html += `<td rowspan="${classRowSpan}" class="px-3 py-3 border border-slate-200 font-bold text-center align-middle bg-slate-50/50">${pClass}</td>`;
+              html += `<td rowspan="${classRowSpan}" class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 font-bold text-center align-middle bg-slate-50/50">${pClass}</td>`;
             }
             
-            html += `<td class="px-3 py-3 border border-slate-200 font-medium text-slate-800 text-center">${rule.category} ${rule.isLeftover ? '<span class="text-red-500 text-xs block">(無申請)</span>' : ''}</td>`;
-            html += `<td class="px-3 py-3 border border-slate-200 text-right text-slate-600">${rule.applyAmt.toFixed(2)}</td>`;
+            html += `<td class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 font-medium text-slate-800 text-center">${rule.category} ${rule.isLeftover ? '<span class="text-red-500 text-[10px] md:text-xs block">(無申請)</span>' : ''}</td>`;
+            html += `<td class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 text-right text-slate-600">${rule.applyAmt.toFixed(2)}</td>`;
             
-            if (rIdx === 0) html += `<td rowspan="${classRowSpan}" class="px-3 py-3 border border-slate-200 text-center align-middle bg-purple-50/40 font-bold text-benq-main text-base">${classApplySum.toFixed(2)}</td>`;
-            html += `<td class="px-3 py-3 border border-slate-200 text-right text-slate-600">${rule.applyMultiple.toFixed(2)}</td>`;
-            if (rIdx === 0) html += `<td rowspan="${classRowSpan}" class="px-3 py-3 border border-slate-200 text-center align-middle bg-purple-50/40 font-bold text-benq-main text-base">${classApplyMultSum.toFixed(2)}</td>`;
+            if (rIdx === 0) html += `<td rowspan="${classRowSpan}" class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 text-center align-middle bg-purple-50/40 font-bold text-benq-main text-sm md:text-base">${classApplySum.toFixed(2)}</td>`;
+            html += `<td class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 text-right text-slate-600">${rule.applyMultiple.toFixed(2)}</td>`;
+            if (rIdx === 0) html += `<td rowspan="${classRowSpan}" class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 text-center align-middle bg-purple-50/40 font-bold text-benq-main text-sm md:text-base">${classApplyMultSum.toFixed(2)}</td>`;
 
-            html += `<td class="px-3 py-3 border border-slate-200 text-right text-benq-main font-bold">${actualStorage > 0 ? actualStorage.toFixed(2) : '-'}</td>`;
-            html += `<td class="px-3 py-3 border border-slate-200 text-right font-medium ${excessAmt > 0 ? 'text-red-600' : 'text-slate-400'}">${excessAmt > 0 ? excessAmt.toFixed(2) : '-'}</td>`;
-            html += `<td class="px-3 py-3 border border-slate-200 text-center"><span class="px-2 py-1 rounded text-xs font-bold whitespace-nowrap ${isPass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${isPass ? '符合' : '不符合'}</span></td>`;
+            html += `<td class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 text-right text-benq-main font-bold">${actualStorage > 0 ? actualStorage.toFixed(2) : '-'}</td>`;
+            html += `<td class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 text-right font-medium ${excessAmt > 0 ? 'text-red-600' : 'text-slate-400'}">${excessAmt > 0 ? excessAmt.toFixed(2) : '-'}</td>`;
+            html += `<td class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 text-center"><span class="px-2 py-1 rounded text-[10px] md:text-xs font-bold whitespace-nowrap ${isPass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${isPass ? '符合' : '不符'}</span></td>`;
 
             if (rIdx === 0) {
               html += `
-                <td rowspan="${classRowSpan}" class="px-3 py-3 border border-slate-200 text-center align-middle bg-slate-50">
+                <td rowspan="${classRowSpan}" class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 text-center align-middle bg-slate-50">
                   <div class="flex flex-col items-center justify-center gap-1.5">
-                    <span class="text-xs text-slate-500 font-medium mt-1">實際倍數</span>
-                    <span class="text-base font-bold ${classIsPass ? 'text-benq-main' : 'text-red-600'}">${classActualMultipleSum.toFixed(2)}</span>
-                    <span class="px-2 py-1 rounded text-xs font-bold whitespace-nowrap mt-0.5 ${classIsPass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
+                    <span class="text-[10px] md:text-xs text-slate-500 font-medium mt-1">實際倍數</span>
+                    <span class="text-sm md:text-base font-bold ${classIsPass ? 'text-benq-main' : 'text-red-600'}">${classActualMultipleSum.toFixed(2)}</span>
+                    <span class="px-2 py-1 rounded text-[10px] md:text-xs font-bold whitespace-nowrap mt-0.5 ${classIsPass ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
                       ${classIsPass ? '✅ 符合' : '❌ 超標'}
                     </span>
                   </div>
@@ -673,20 +682,20 @@
       
       DOM.listBody.innerHTML = state.filteredData.map(row => `
         <tr class="bg-white border-b border-slate-100 hover:bg-slate-50">
-          <td class="px-4 py-2.5 whitespace-nowrap text-slate-600">${row.date}</td>
-          <td class="px-4 py-2.5 text-slate-700">${row.location}</td>
-          <td class="px-4 py-2.5 text-slate-700">${row.category}</td>
-          <td class="px-4 py-2.5 text-amber-700 bg-amber-50/30 font-medium">${row.petroleumClass}</td>
-          <td class="px-4 py-2.5 font-medium text-slate-800">${row.chemName}</td>
-          <td class="px-4 py-2.5 text-right text-slate-700 font-semibold">${Number(row.storageAmt).toFixed(2)}</td>
-          <td class="px-4 py-2.5 text-right text-slate-500">${Number(row.controlAmt).toFixed(2)}</td>
-          <td class="px-4 py-2.5 text-center">
-            <span class="px-2 py-1 rounded text-xs font-semibold ${row.multiple >= 1 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}">${row.multiple}</span>
+          <td class="px-3 md:px-4 py-2 md:py-2.5 whitespace-nowrap text-slate-600">${row.date}</td>
+          <td class="px-3 md:px-4 py-2 md:py-2.5 text-slate-700 whitespace-nowrap">${row.location}</td>
+          <td class="px-3 md:px-4 py-2 md:py-2.5 text-slate-700 whitespace-nowrap">${row.category}</td>
+          <td class="px-3 md:px-4 py-2 md:py-2.5 text-amber-700 bg-amber-50/30 font-medium whitespace-nowrap">${row.petroleumClass}</td>
+          <td class="px-3 md:px-4 py-2 md:py-2.5 font-medium text-slate-800 min-w-[120px]">${row.chemName}</td>
+          <td class="px-3 md:px-4 py-2 md:py-2.5 text-right text-slate-700 font-semibold">${Number(row.storageAmt).toFixed(2)}</td>
+          <td class="px-3 md:px-4 py-2 md:py-2.5 text-right text-slate-500">${Number(row.controlAmt).toFixed(2)}</td>
+          <td class="px-3 md:px-4 py-2 md:py-2.5 text-center">
+            <span class="px-2 py-1 rounded text-[10px] md:text-xs font-semibold ${row.multiple >= 1 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}">${row.multiple}</span>
           </td>
-          <td class="px-4 py-2.5 text-center">
-            <div class="flex items-center justify-center gap-3">
-              <button onclick="handleEdit('${row.id}')" class="text-blue-600 hover:text-blue-800 transition-colors"><i data-lucide="edit" class="w-4 h-4"></i></button>
-              <button onclick="handleDelete('${row.id}')" class="text-red-500 hover:text-red-700 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+          <td class="px-3 md:px-4 py-2 md:py-2.5 text-center">
+            <div class="flex items-center justify-center gap-2 md:gap-3">
+              <button onclick="handleEdit('${row.id}')" class="text-blue-600 hover:text-blue-800 transition-colors p-1"><i data-lucide="edit" class="w-4 h-4"></i></button>
+              <button onclick="handleDelete('${row.id}')" class="text-red-500 hover:text-red-700 transition-colors p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
             </div>
           </td>
         </tr>
@@ -702,20 +711,35 @@
         if (state.chartInstance) { state.chartInstance.destroy(); state.chartInstance = null; }
         return;
       }
+
+      // 取得多選的化學品清單
+      const selectedChems = Array.from(DOM.multiChemSelect.selectedOptions).map(o => o.value);
+      if(selectedChems.length === 0) {
+        DOM.chartNoData.innerText = "請由上方選取化學品以顯示圖表";
+        DOM.chartNoData.classList.remove('hidden');
+        if (state.chartInstance) { state.chartInstance.destroy(); state.chartInstance = null; }
+        return;
+      }
+      
       DOM.chartNoData.classList.add('hidden');
 
       const dates = [...new Set(state.filteredData.map(d => d.date))].sort((a, b) => new Date(a) - new Date(b));
-      const uniqueChems = [...new Set(state.filteredData.map(d => d.chemName))];
 
-      const datasets = uniqueChems.map((chemName, index) => {
+      const datasets = selectedChems.map((chemName, index) => {
         const dataPoints = dates.map(date => {
           const record = state.filteredData.find(d => d.date === date && d.chemName === chemName);
           return record ? record.storageAmt : null;
         });
+        
+        // 生成不同的顏色
+        const hue = (index * 360) / selectedChems.length;
+        const color = `hsl(${hue}, 70%, 50%)`;
+        const bgColor = `hsla(${hue}, 70%, 50%, 0.1)`;
+
         return {
           label: chemName, data: dataPoints,
-          borderColor: chartColors[index % chartColors.length], backgroundColor: chartColors[index % chartColors.length],
-          tension: 0.3, spanGaps: true, pointRadius: 4, borderWidth: 2
+          borderColor: color, backgroundColor: bgColor,
+          tension: 0.3, spanGaps: true, pointRadius: 4, borderWidth: 2, fill: true
         };
       });
 
@@ -724,8 +748,8 @@
         type: 'line', data: { labels: dates, datasets: datasets },
         options: {
           responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: 'right' }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y} kg/L` } } },
-          scales: { y: { beginAtZero: true, title: { display: true, text: '儲存量 (kg/L)' } }, x: { title: { display: true, text: '日期' } } }
+          plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y} kg/L` } } },
+          scales: { y: { beginAtZero: true, title: { display: true, text: '儲存量 (L)' } }, x: { title: { display: false } } }
         }
       });
     }
@@ -816,6 +840,8 @@
       DOM.tabs.summary.addEventListener('click', () => { state.activeTab = 'summary'; renderApp(); });
       DOM.tabs.list.addEventListener('click', () => { state.activeTab = 'list'; renderApp(); });
       DOM.tabs.chart.addEventListener('click', () => { state.activeTab = 'chart'; renderApp(); });
+
+      DOM.multiChemSelect.addEventListener('change', renderChart);
 
       DOM.inputLocation.addEventListener('change', () => {
         DOM.chemSearchInput.value = '';
