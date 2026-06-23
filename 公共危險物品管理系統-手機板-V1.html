@@ -37,8 +37,8 @@
     .hide-scrollbar::-webkit-scrollbar { display: none; }
   </style>
 </head>
-<!-- 將 body 嚴格綁定螢幕高度，所有滾動由內部容器負責 -->
-<body class="h-screen w-screen overflow-hidden bg-slate-50 text-slate-800 font-sans flex flex-col relative">
+<!-- 移除 overflow-hidden 與固定高度，改為 min-h-screen 讓網頁自然向下延伸滾動 -->
+<body class="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col relative overflow-x-hidden">
 
   <!-- 庫存超標預警 Modal -->
   <div id="warningModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
@@ -63,8 +63,8 @@
     </div>
   </div>
 
-  <!-- Header (固定於頂部) -->
-  <header class="shrink-0 bg-benq-main text-white px-4 md:px-6 py-3 md:py-4 shadow-md flex flex-col sm:flex-row justify-between items-center z-10 gap-2 sm:gap-0">
+  <!-- Header (改為 sticky，固定在畫面頂端) -->
+  <header class="sticky top-0 shrink-0 bg-benq-main text-white px-4 md:px-6 py-3 md:py-4 shadow-md flex flex-col sm:flex-row justify-between items-center z-50 gap-2 sm:gap-0">
     <div class="flex items-center gap-2 md:gap-3 w-full sm:w-auto justify-center sm:justify-start">
       <i data-lucide="activity" class="w-5 h-5 md:w-6 md:h-6 shrink-0"></i>
       <h1 class="text-lg md:text-xl font-bold tracking-wide truncate">BML 公共危險品管理系統</h1>
@@ -72,11 +72,11 @@
     <div id="updateTime" class="text-xs md:text-sm opacity-80 text-center sm:text-right w-full sm:w-auto"></div>
   </header>
 
-  <!-- 主要框架區塊 (Flex延展：手機版直式，電腦版橫式) -->
-  <div class="flex flex-col md:flex-row flex-1 overflow-hidden min-h-0">
+  <!-- 主要框架區塊 (移除強制隱藏的 overflow-hidden) -->
+  <div class="flex flex-col md:flex-row flex-1 w-full max-w-[1600px] mx-auto">
     
-    <!-- 左側：儲存量輸入區 (手機版限制最大高度並可獨立滾動) -->
-    <aside class="w-full md:w-80 max-h-[40vh] md:max-h-full shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex flex-col shadow-sm z-0 overflow-y-auto">
+    <!-- 左側：儲存量輸入區 (電腦版自動固定高度並釘在左側，手機版則自然往下排) -->
+    <aside class="w-full md:w-80 shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex flex-col shadow-sm md:sticky md:top-[68px] md:self-start md:h-[calc(100vh-68px)] md:overflow-y-auto z-10">
       <div class="flex items-center gap-2 mb-4 md:mb-6 text-benq-main shrink-0">
         <i data-lucide="plus" class="w-4 h-4 md:w-5 md:h-5"></i>
         <h2 class="text-base md:text-lg font-semibold">儲存量輸入</h2>
@@ -133,10 +133,10 @@
       </form>
     </aside>
 
-    <!-- 右側：資料呈現與分析區 -->
-    <main class="flex-1 p-3 md:p-6 overflow-hidden bg-slate-50 flex flex-col min-w-0 min-h-0">
+    <!-- 右側：資料呈現與分析區 (移除 overflow 限制，依隨網頁滾動) -->
+    <main class="flex-1 p-3 md:p-6 bg-slate-50 flex flex-col min-w-0">
       
-      <!-- 功能列 (固定不滾動，適配手機版) -->
+      <!-- 功能列 -->
       <div class="shrink-0 bg-white p-3 md:p-4 rounded-lg shadow-sm border border-slate-200 mb-3 md:mb-4 flex flex-col xl:flex-row gap-3 xl:items-end justify-between">
         <div class="grid grid-cols-2 lg:flex lg:flex-wrap gap-3 items-end flex-1">
           <div>
@@ -187,7 +187,7 @@
         </div>
       </div>
 
-      <!-- 頁籤選單 (固定不滾動，手機端橫向滾動) -->
+      <!-- 頁籤選單 -->
       <div class="shrink-0 flex overflow-x-auto hide-scrollbar bg-white rounded-t-lg border-b border-slate-200 px-2 pt-2 gap-2 shadow-sm">
         <button id="tabSummary" class="whitespace-nowrap px-4 md:px-6 py-2 md:py-2.5 rounded-t-lg font-medium text-xs md:text-sm transition-colors flex items-center gap-2 bg-benq-main text-white shadow-sm">
           <i data-lucide="file-text" class="w-4 h-4"></i> 管制表彙整
@@ -200,8 +200,8 @@
         </button>
       </div>
 
-      <!-- 🌟 內容區塊 (動態捲軸完美作用的關鍵：flex-1, min-h-0, overflow-y-auto) 🌟 -->
-      <div class="flex-1 min-h-0 overflow-y-auto bg-white border border-t-0 border-slate-200 p-3 md:p-6 rounded-b-lg shadow-sm">
+      <!-- 🌟 內容區塊 (改為自然向下延伸) 🌟 -->
+      <div class="bg-white border border-t-0 border-slate-200 p-3 md:p-6 rounded-b-lg shadow-sm">
         
         <!-- Sheet 1：管制表彙整 -->
         <div id="viewSummary" class="animate-in fade-in duration-300 flex flex-col gap-4">
@@ -214,7 +214,6 @@
               <select id="reportDateSelect" class="w-full sm:w-auto border border-purple-300 rounded p-1.5 text-xs md:text-sm bg-white focus:ring-benq-main outline-none min-w-[120px]"></select>
             </div>
           </div>
-          <!-- 內部表單容器，高度自由長高，由外層 parent 控制滾動 -->
           <div id="summaryContainer" class="flex flex-col gap-6"></div>
         </div>
 
@@ -228,7 +227,7 @@
           </div>
           <div class="overflow-x-auto border border-t-0 border-slate-200 rounded-b-lg">
             <table class="w-full text-xs md:text-sm text-left break-words">
-              <thead class="text-[10px] md:text-xs text-slate-600 bg-slate-50 uppercase sticky top-0 shadow-sm z-10">
+              <thead class="text-[10px] md:text-xs text-slate-600 bg-slate-50 uppercase shadow-sm">
                 <tr>
                   <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">盤點日期</th>
                   <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">儲存場所</th>
@@ -247,7 +246,7 @@
         </div>
 
         <!-- Sheet 3：趨勢圖表 -->
-        <div id="viewChart" class="animate-in fade-in duration-300 hidden flex-col min-h-[400px]">
+        <div id="viewChart" class="animate-in fade-in duration-300 hidden flex-col">
           <h3 class="shrink-0 text-base md:text-lg font-semibold text-benq-dark mb-3 md:mb-4 flex items-center gap-2">
             <i data-lucide="activity" class="w-4 h-4 text-benq-main"></i> 儲存量變化趨勢圖 (依化學品)
           </h3>
@@ -258,7 +257,7 @@
             <p class="text-[10px] text-slate-400 mt-1 italic">提示：在手機或平板上，請長按或連續點擊欲選擇的項目來進行多選。</p>
           </div>
 
-          <div class="flex-1 w-full relative min-h-[300px] md:min-h-[400px]">
+          <div class="w-full relative min-h-[300px] md:min-h-[400px]">
             <div id="chartNoData" class="absolute inset-0 flex items-center justify-center bg-white/80 z-10 text-slate-500 text-sm hidden">尚無符合條件的資料或未選取化學品</div>
             <canvas id="myChart"></canvas>
           </div>
@@ -589,7 +588,7 @@
               </div>
             </div>
             <div class="overflow-x-auto">
-              <table class="w-full text-xs md:text-sm text-left border-collapse break-words">
+              <table class="w-full text-xs md:text-sm text-left border-collapse break-words min-w-[800px]">
                 <thead class="text-[10px] md:text-xs text-slate-700 bg-slate-100 border-b-2 border-slate-300 text-center">
                   <tr>
                     <th rowspan="2" class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 align-middle bg-slate-200/50 w-20 md:w-24">危物種類</th>
