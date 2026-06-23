@@ -246,18 +246,33 @@
         </div>
 
         <!-- Sheet 3：趨勢圖表 -->
-        <div id="viewChart" class="animate-in fade-in duration-300 hidden flex-col">
+        <div id="viewChart" class="animate-in fade-in duration-300 hidden flex-col min-h-[400px]">
           <h3 class="shrink-0 text-base md:text-lg font-semibold text-benq-dark mb-3 md:mb-4 flex items-center gap-2">
             <i data-lucide="activity" class="w-4 h-4 text-benq-main"></i> 儲存量變化趨勢圖 (依化學品)
           </h3>
           
-          <div class="mb-4 shrink-0">
-            <label class="block text-xs md:text-sm font-bold mb-2 text-slate-700">選擇化學品 (按住 Ctrl 或 Command 鍵可進行複選)：</label>
-            <select id="multiChemSelect" multiple class="w-full border border-slate-300 p-2 md:p-3 rounded-lg h-32 md:h-40 bg-slate-50 text-xs md:text-sm focus:ring-2 focus:ring-benq-main shadow-inner"></select>
-            <p class="text-[10px] text-slate-400 mt-1 italic">提示：在手機或平板上，請長按或連續點擊欲選擇的項目來進行多選。</p>
+          <div class="mb-4 shrink-0 relative" id="chartChemDropdownContainer">
+            <label class="block text-xs md:text-sm font-bold mb-2 text-slate-700">選擇化學品 (請點擊展開並勾選)：</label>
+            
+            <!-- 展開/收合按鈕 -->
+            <button type="button" id="btnToggleChartChem" class="w-full flex justify-between items-center border border-slate-300 p-2.5 rounded-lg bg-white text-sm focus:ring-2 focus:ring-benq-main outline-none shadow-sm transition-colors hover:bg-slate-50">
+              <span id="chartChemBtnText" class="truncate text-slate-500">請展開勾選欲顯示的項目...</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 pointer-events-none"></i>
+            </button>
+            
+            <!-- 下拉選單面板 (預設隱藏) -->
+            <div id="chartChemDropdownPanel" class="hidden absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl flex flex-col overflow-hidden">
+              <div class="p-2 border-b border-slate-100 flex gap-2 bg-slate-50 shrink-0">
+                <button type="button" id="btnSelectAllChems" class="text-xs bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-4 py-1.5 rounded transition-colors font-medium shadow-sm flex-1">全選</button>
+                <button type="button" id="btnClearAllChems" class="text-xs bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-4 py-1.5 rounded transition-colors font-medium shadow-sm flex-1">清除全部</button>
+              </div>
+              <div id="multiChemCheckboxes" class="max-h-64 overflow-y-auto p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 content-start text-sm">
+                <!-- 動態產生的 Checkbox 列表 -->
+              </div>
+            </div>
           </div>
 
-          <div class="w-full relative min-h-[300px] md:min-h-[400px]">
+          <div class="flex-1 w-full relative min-h-[300px] md:min-h-[400px]">
             <div id="chartNoData" class="absolute inset-0 flex items-center justify-center bg-white/80 z-10 text-slate-500 text-sm hidden">尚無符合條件的資料或未選取化學品</div>
             <canvas id="myChart"></canvas>
           </div>
@@ -408,7 +423,16 @@
       listBody: document.getElementById('listBody'),
       listCount: document.getElementById('listCount'),
       chartNoData: document.getElementById('chartNoData'),
-      multiChemSelect: document.getElementById('multiChemSelect'),
+      multiChemCheckboxes: document.getElementById('multiChemCheckboxes'),
+      btnSelectAllChems: document.getElementById('btnSelectAllChems'),
+      btnClearAllChems: document.getElementById('btnClearAllChems'),
+      
+      // 新增的 DOM 元素
+      btnToggleChartChem: document.getElementById('btnToggleChartChem'),
+      chartChemDropdownPanel: document.getElementById('chartChemDropdownPanel'),
+      chartChemDropdownContainer: document.getElementById('chartChemDropdownContainer'),
+      chartChemBtnText: document.getElementById('chartChemBtnText'),
+
       warningModal: document.getElementById('warningModal'),
       modalMsg: document.getElementById('modalMsg'),
       modalApplyAmt: document.getElementById('modalApplyAmt'),
@@ -439,7 +463,17 @@
     // 初始化圖表多選清單
     function initMultiChemSelect() {
       const uniqueNames = [...new Set(baseChemicals.map(c => c.name))];
-      DOM.multiChemSelect.innerHTML = uniqueNames.map(name => `<option value="${name}">${name}</option>`).join('');
+      DOM.multiChemCheckboxes.innerHTML = uniqueNames.map(name => `
+        <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1.5 rounded transition-colors">
+          <input type="checkbox" value="${name}" class="chem-checkbox w-4 h-4 text-[#5C2483] focus:ring-[#5C2483] rounded border-slate-300">
+          <span class="truncate text-slate-700">${name}</span>
+        </label>
+      `).join('');
+
+      // 綁定 Checkbox 變更事件
+      document.querySelectorAll('.chem-checkbox').forEach(cb => {
+        cb.addEventListener('change', renderChart);
+      });
     }
 
     // --- 資料處理核心 ---
@@ -711,10 +745,22 @@
         return;
       }
 
-      // 取得多選的化學品清單
-      const selectedChems = Array.from(DOM.multiChemSelect.selectedOptions).map(o => o.value);
+      // 取得多選的化學品清單 (改由 checkboxes 取得)
+      const selectedChems = Array.from(document.querySelectorAll('.chem-checkbox:checked')).map(cb => cb.value);
+      
+      // 更新下拉按鈕文字提示
+      if (DOM.chartChemBtnText) {
+        if (selectedChems.length === 0) {
+          DOM.chartChemBtnText.innerText = '請展開勾選欲顯示的項目...';
+          DOM.chartChemBtnText.className = 'truncate text-slate-500';
+        } else {
+          DOM.chartChemBtnText.innerText = `已選擇 ${selectedChems.length} 項化學品`;
+          DOM.chartChemBtnText.className = 'truncate text-benq-main font-bold';
+        }
+      }
+
       if(selectedChems.length === 0) {
-        DOM.chartNoData.innerText = "請由上方選取化學品以顯示圖表";
+        DOM.chartNoData.innerText = "請由上方展開選單並勾選化學品以顯示圖表";
         DOM.chartNoData.classList.remove('hidden');
         if (state.chartInstance) { state.chartInstance.destroy(); state.chartInstance = null; }
         return;
@@ -840,7 +886,33 @@
       DOM.tabs.list.addEventListener('click', () => { state.activeTab = 'list'; renderApp(); });
       DOM.tabs.chart.addEventListener('click', () => { state.activeTab = 'chart'; renderApp(); });
 
-      DOM.multiChemSelect.addEventListener('change', renderChart);
+      // 圖表下拉選單展開/收合
+      if (DOM.btnToggleChartChem) {
+        DOM.btnToggleChartChem.addEventListener('click', () => {
+          DOM.chartChemDropdownPanel.classList.toggle('hidden');
+        });
+      }
+
+      // 點擊外部關閉圖表下拉選單
+      document.addEventListener('mousedown', (e) => {
+        if (DOM.chartChemDropdownContainer && !DOM.chartChemDropdownContainer.contains(e.target)) {
+          DOM.chartChemDropdownPanel.classList.add('hidden');
+        }
+      });
+
+      // 全選 / 清除全選按鈕
+      if (DOM.btnSelectAllChems) {
+        DOM.btnSelectAllChems.addEventListener('click', () => {
+          document.querySelectorAll('.chem-checkbox').forEach(cb => cb.checked = true);
+          renderChart();
+        });
+      }
+      if (DOM.btnClearAllChems) {
+        DOM.btnClearAllChems.addEventListener('click', () => {
+          document.querySelectorAll('.chem-checkbox').forEach(cb => cb.checked = false);
+          renderChart();
+        });
+      }
 
       DOM.inputLocation.addEventListener('change', () => {
         DOM.chemSearchInput.value = '';
