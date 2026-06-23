@@ -1061,12 +1061,26 @@
       const fileName = `BML_公共危險品庫存_${new Date().toISOString().split('T')[0]}.xlsx`;
       const file = new File([excelBuffer], fileName, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ title: 'BML 庫存報表', text: '請查收公共危險品庫存資料。', files: [file] }); } 
-        catch (err) { console.log('分享取消'); }
-      } else {
-        alert('您的瀏覽器不支援原生分享，已自動下載 Excel 檔案，請手動傳送。');
-        XLSX.writeFile(wb, fileName);
+      // 檢查是否為行動裝置，行動裝置呼叫原生分享選單體驗較佳
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { 
+          await navigator.share({ title: 'BML 庫存報表', text: '請查收公共危險品庫存資料。', files: [file] }); 
+          return; // 原生分享成功即結束
+        } 
+        catch (err) { console.log('原生分享取消或失敗', err); }
+      } 
+      
+      // 替代方案：因為 LINE 的捷徑不支援直接「夾帶實體檔案」，所以先自動下載檔案，再喚醒 LINE
+      XLSX.writeFile(wb, fileName);
+      
+      const lineText = encodeURIComponent('您好，這是我剛剛匯出的「BML 公共危險品庫存報表」。\n(請稍後查收我手動上傳的 Excel 檔案)');
+      const confirmMsg = '【系統提示】\n由於 LINE 系統限制，無法直接透過網頁夾帶檔案。\n\n系統已為您「自動下載」Excel 檔案！\n點擊「確定」將會開啟 LINE，請您在 LINE 中手動上傳剛剛下載的檔案。';
+      
+      if (confirm(confirmMsg)) {
+        // 喚醒 LINE App 或開啟 LINE 網頁版分享介面
+        window.open(`https://line.me/R/msg/text/?${lineText}`, '_blank');
       }
     }
 
