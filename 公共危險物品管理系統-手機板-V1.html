@@ -220,15 +220,24 @@
         <!-- Sheet 2：化學品清單 -->
         <div id="viewList" class="animate-in fade-in duration-300 hidden flex-col">
           <div class="shrink-0 p-3 bg-purple-50 border border-purple-100 rounded-t-lg flex justify-between items-center">
-            <h3 class="font-bold text-benq-dark flex items-center gap-2 text-sm md:text-base">
-              <i data-lucide="list" class="w-4 h-4"></i> 化學品清單紀錄
-            </h3>
+            <div class="flex items-center gap-3">
+              <h3 class="font-bold text-benq-dark flex items-center gap-2 text-sm md:text-base">
+                <i data-lucide="list" class="w-4 h-4"></i> 化學品清單紀錄
+              </h3>
+              <!-- 批次刪除按鈕 (預設隱藏) -->
+              <button id="btnBatchDelete" class="hidden bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded items-center gap-1 shadow-sm transition-colors">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> <span id="batchDeleteText">刪除選定項目 (0筆)</span>
+              </button>
+            </div>
             <span id="listCount" class="text-[10px] md:text-xs bg-purple-100 text-benq-main px-2 py-1 rounded-full"></span>
           </div>
           <div class="overflow-x-auto border border-t-0 border-slate-200 rounded-b-lg">
             <table class="w-full text-xs md:text-sm text-left break-words">
               <thead class="text-[10px] md:text-xs text-slate-600 bg-slate-50 uppercase shadow-sm">
                 <tr>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 text-center w-10">
+                    <input type="checkbox" id="selectAllList" class="w-4 h-4 text-benq-main rounded border-slate-300 focus:ring-benq-main cursor-pointer">
+                  </th>
                   <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">盤點日期</th>
                   <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">儲存場所</th>
                   <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">標示版歸類</th>
@@ -332,7 +341,7 @@
 
     const applicationRules = {
       '危險品庫房': [
-        { category: '添加劑', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 7769, applyMultiple: 38.84 },
+        { category: '添加劑', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 7697, applyMultiple: 38.485 },
         { category: '乙酸乙脂', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 7520, applyMultiple: 37.60 },
         { category: '丁酮', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 660, applyMultiple: 3.30 },
         { category: '乙酸正丙脂', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 720, applyMultiple: 3.6 },
@@ -376,7 +385,8 @@
       filters: { startDate: todayStr, endDate: todayStr, location: '', petroleumClass: '', chemName: '' },
       selectedReportDate: todayStr,
       pendingSaveAction: null,
-      chartInstance: null
+      chartInstance: null,
+      selectedRecordIds: new Set() // 新增：用於追蹤清單勾選狀態
     };
 
     // 產生測試資料 (已清空，提供乾淨的初始狀態)
@@ -427,6 +437,11 @@
       btnSelectAllChems: document.getElementById('btnSelectAllChems'),
       btnClearAllChems: document.getElementById('btnClearAllChems'),
       
+      // 新增：批次刪除相關 DOM
+      selectAllList: document.getElementById('selectAllList'),
+      btnBatchDelete: document.getElementById('btnBatchDelete'),
+      batchDeleteText: document.getElementById('batchDeleteText'),
+
       // 新增的 DOM 元素
       btnToggleChartChem: document.getElementById('btnToggleChartChem'),
       chartChemDropdownPanel: document.getElementById('chartChemDropdownPanel'),
@@ -709,12 +724,18 @@
     function renderList() {
       DOM.listCount.innerText = `共 ${state.filteredData.length} 筆明細`;
       if (state.filteredData.length === 0) {
-        DOM.listBody.innerHTML = `<tr><td colspan="9" class="px-4 py-8 text-center text-slate-400">尚無符合條件的清單資料</td></tr>`;
+        DOM.listBody.innerHTML = `<tr><td colspan="10" class="px-4 py-8 text-center text-slate-400">尚無符合條件的清單資料</td></tr>`;
+        updateBatchDeleteUI();
         return;
       }
       
-      DOM.listBody.innerHTML = state.filteredData.map(row => `
-        <tr class="bg-white border-b border-slate-100 hover:bg-slate-50">
+      DOM.listBody.innerHTML = state.filteredData.map(row => {
+        const isChecked = state.selectedRecordIds.has(row.id) ? 'checked' : '';
+        return `
+        <tr class="bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors ${isChecked ? 'bg-purple-50/30' : ''}">
+          <td class="px-3 md:px-4 py-2 md:py-2.5 text-center">
+            <input type="checkbox" value="${row.id}" class="row-checkbox w-4 h-4 text-benq-main rounded border-slate-300 focus:ring-benq-main cursor-pointer" ${isChecked}>
+          </td>
           <td class="px-3 md:px-4 py-2 md:py-2.5 whitespace-nowrap text-slate-600">${row.date}</td>
           <td class="px-3 md:px-4 py-2 md:py-2.5 text-slate-700 whitespace-nowrap">${row.location}</td>
           <td class="px-3 md:px-4 py-2 md:py-2.5 text-slate-700 whitespace-nowrap">${row.category}</td>
@@ -732,7 +753,43 @@
             </div>
           </td>
         </tr>
-      `).join('');
+      `}).join('');
+
+      // 綁定單筆勾選事件
+      document.querySelectorAll('.row-checkbox').forEach(cb => {
+        cb.addEventListener('change', (e) => {
+          if (e.target.checked) {
+            state.selectedRecordIds.add(e.target.value);
+            e.target.closest('tr').classList.add('bg-purple-50/30');
+          } else {
+            state.selectedRecordIds.delete(e.target.value);
+            e.target.closest('tr').classList.remove('bg-purple-50/30');
+          }
+          updateBatchDeleteUI();
+        });
+      });
+
+      updateBatchDeleteUI();
+    }
+
+    // --- 更新批次刪除 UI ---
+    function updateBatchDeleteUI() {
+      if (!DOM.btnBatchDelete || !DOM.batchDeleteText || !DOM.selectAllList) return;
+
+      const visibleIds = state.filteredData.map(r => r.id);
+      const isAllVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => state.selectedRecordIds.has(id));
+      
+      DOM.selectAllList.checked = isAllVisibleSelected;
+      DOM.selectAllList.disabled = visibleIds.length === 0;
+
+      if (state.selectedRecordIds.size > 0) {
+        DOM.btnBatchDelete.classList.remove('hidden');
+        DOM.btnBatchDelete.classList.add('flex');
+        DOM.batchDeleteText.innerText = `刪除選定項目 (${state.selectedRecordIds.size}筆)`;
+      } else {
+        DOM.btnBatchDelete.classList.add('hidden');
+        DOM.btnBatchDelete.classList.remove('flex');
+      }
     }
 
     // --- 渲染 圖表 ---
@@ -885,6 +942,30 @@
       DOM.tabs.summary.addEventListener('click', () => { state.activeTab = 'summary'; renderApp(); });
       DOM.tabs.list.addEventListener('click', () => { state.activeTab = 'list'; renderApp(); });
       DOM.tabs.chart.addEventListener('click', () => { state.activeTab = 'chart'; renderApp(); });
+
+      // 新增：全選列表事件
+      if (DOM.selectAllList) {
+        DOM.selectAllList.addEventListener('change', (e) => {
+          const isChecked = e.target.checked;
+          state.filteredData.forEach(row => {
+            if (isChecked) state.selectedRecordIds.add(row.id);
+            else state.selectedRecordIds.delete(row.id);
+          });
+          renderList();
+          lucide.createIcons();
+        });
+      }
+
+      // 新增：批次刪除點擊事件
+      if (DOM.btnBatchDelete) {
+        DOM.btnBatchDelete.addEventListener('click', () => {
+          if (confirm(`確定要刪除選定的 ${state.selectedRecordIds.size} 筆庫存紀錄嗎？\n(此操作無法復原)`)) {
+            state.inventoryData = state.inventoryData.filter(r => !state.selectedRecordIds.has(r.id));
+            state.selectedRecordIds.clear();
+            processData(); // 會自動重新過濾並呼叫 renderApp()
+          }
+        });
+      }
 
       // 圖表下拉選單展開/收合
       if (DOM.btnToggleChartChem) {
