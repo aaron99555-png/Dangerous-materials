@@ -72,10 +72,10 @@
     <div id="updateTime" class="text-xs md:text-sm opacity-80 text-center sm:text-right w-full sm:w-auto"></div>
   </header>
 
-  <!-- 主要框架區塊 (移除強制隱藏的 overflow-hidden) -->
+  <!-- 主要框架區塊 -->
   <div class="flex flex-col md:flex-row flex-1 w-full max-w-[1600px] mx-auto">
     
-    <!-- 左側：儲存量輸入區 (電腦版自動固定高度並釘在左側，手機版則自然往下排) -->
+    <!-- 左側：儲存量輸入區 -->
     <aside class="w-full md:w-80 shrink-0 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex flex-col shadow-sm md:sticky md:top-[68px] md:self-start md:h-[calc(100vh-68px)] md:overflow-y-auto z-10">
       <div class="flex items-center gap-2 mb-4 md:mb-6 text-benq-main shrink-0">
         <i data-lucide="plus" class="w-4 h-4 md:w-5 md:h-5"></i>
@@ -133,7 +133,7 @@
       </form>
     </aside>
 
-    <!-- 右側：資料呈現與分析區 (移除 overflow 限制，依隨網頁滾動) -->
+    <!-- 右側：資料呈現與分析區 -->
     <main class="flex-1 p-3 md:p-6 bg-slate-50 flex flex-col min-w-0">
       
       <!-- 功能列 -->
@@ -200,7 +200,7 @@
         </button>
       </div>
 
-      <!-- 🌟 內容區塊 (改為自然向下延伸) 🌟 -->
+      <!-- 🌟 內容區塊 -->
       <div class="bg-white border border-t-0 border-slate-200 p-3 md:p-6 rounded-b-lg shadow-sm">
         
         <!-- Sheet 1：管制表彙整 -->
@@ -320,7 +320,10 @@
       { name: 'C0301廢棄物(第二石油類)', category: 'C0301廢棄物(第二石油類)', petroleumClass: '第二石油類', flashPoint: '', controlAmt: 1000 },
       { name: '二甲苯', category: '二甲苯', petroleumClass: '第一石油類', flashPoint: '25', controlAmt: 200 },
       { name: '異丙醇', category: '異丙醇', petroleumClass: '酒精類', flashPoint: '12', controlAmt: 400 },
-      { name: 'UV感壓膠', category: 'UV感壓膠', petroleumClass: '第三石油類', flashPoint: '100', controlAmt: 2000 }
+      { name: 'UV感壓膠', category: 'UV感壓膠', petroleumClass: '第三石油類', flashPoint: '100', controlAmt: 2000 },
+      { name: 'PSA廢膠', category: 'C0301廢棄物(第二石油類)', petroleumClass: '第二石油類', flashPoint: '', controlAmt: 1000 },
+      { name: 'KBM-503', category: '添加劑', petroleumClass: '第三石油類', flashPoint: '108', controlAmt: 2000 },
+      { name: 'KBM-402', category: '添加劑', petroleumClass: '第三石油類', flashPoint: '112', controlAmt: 2000 }
     ];
 
     const defaultChemicals = [];
@@ -390,9 +393,22 @@
       selectedRecordIds: new Set() // 新增：用於追蹤清單勾選狀態
     };
 
-    // 產生測試資料 (已清空，提供乾淨的初始狀態)
-    function initMockData() {
-      state.inventoryData = [];
+    // --- 新增：本機記憶存取功能 ---
+    function loadData() {
+      const stored = localStorage.getItem('bml_inventory_data');
+      if (stored) {
+        try {
+          state.inventoryData = JSON.parse(stored);
+        } catch (e) {
+          state.inventoryData = [];
+        }
+      } else {
+        state.inventoryData = [];
+      }
+    }
+
+    function saveDataToStorage() {
+      localStorage.setItem('bml_inventory_data', JSON.stringify(state.inventoryData));
     }
 
     // --- DOM 元素選擇 ---
@@ -463,7 +479,7 @@
     // --- 初始化 ---
     function init() {
       lucide.createIcons();
-      initMockData();
+      loadData(); // 取代原本的 initMockData，改為讀取本機記憶
       DOM.updateTime.innerText = `資料更新時間：${new Date().toLocaleString('zh-TW')}`;
       
       DOM.inputDate.value = state.formData.date;
@@ -934,6 +950,7 @@
     window.handleDelete = function(id) {
       if (confirm('確定要刪除這筆庫存紀錄嗎？這將無法復原。')) {
         state.inventoryData = state.inventoryData.filter(r => r.id !== id);
+        saveDataToStorage(); // 刪除後自動儲存
         processData();
       }
     };
@@ -963,6 +980,7 @@
           if (confirm(`確定要刪除選定的 ${state.selectedRecordIds.size} 筆庫存紀錄嗎？\n(此操作無法復原)`)) {
             state.inventoryData = state.inventoryData.filter(r => !state.selectedRecordIds.has(r.id));
             state.selectedRecordIds.clear();
+            saveDataToStorage(); // 批次刪除後自動儲存
             processData(); // 會自動重新過濾並呼叫 renderApp()
           }
         });
@@ -1129,8 +1147,24 @@
         state.inventoryData.push({ id: crypto.randomUUID(), date: state.formData.date, chemId: state.formData.chemId, storageAmt: parseFloat(state.formData.storageAmt) });
       }
       
+      saveDataToStorage(); // 新增或修改後自動儲存
+
+      // 修改：儲存後保留「日期」與「儲存區域」，僅清空化學品與數量，方便連續輸入
+      state.formData.chemId = '';
+      state.formData.storageAmt = '';
+      state.editingId = null;
+
+      DOM.chemSearchInput.value = '';
       DOM.inputStorageAmt.value = '';
-      DOM.btnClearForm.click(); 
+      DOM.chemInfoPanel.classList.add('hidden');
+      DOM.btnClearChem.classList.add('hidden');
+      DOM.btnClearStorage.classList.add('hidden');
+
+      DOM.btnSubmit.innerText = '儲存資料';
+      DOM.btnSubmit.classList.replace('bg-amber-600', 'bg-benq-main');
+      DOM.btnSubmit.classList.replace('hover:bg-amber-700', 'hover:bg-benq-dark');
+      DOM.editingBadge.classList.add('hidden');
+      
       DOM.warningModal.classList.remove('flex'); DOM.warningModal.classList.add('hidden');
       processData();
     }
@@ -1197,6 +1231,7 @@
             imported.push({ id: crypto.randomUUID(), date: dStr, chemId: chem.id, storageAmt: amt });
           }
           state.inventoryData.push(...imported);
+          saveDataToStorage(); // 匯入完成後自動儲存
           processData();
           alert(`成功從 Excel 匯入 ${imported.length} 筆紀錄`);
         } catch(err) { alert('匯入失敗，請確認檔案格式'); }
