@@ -18,11 +18,7 @@
       theme: {
         extend: {
           colors: {
-            benq: {
-              main: '#5C2483',
-              dark: '#4A1D6A',
-              light: '#f5f3f7'
-            }
+            benq: { main: '#5C2483', dark: '#4A1D6A', light: '#f5f3f7' }
           }
         }
       }
@@ -35,9 +31,11 @@
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .sort-icon::after { content: ' ↕'; opacity: 0.3; font-size: 0.8em; }
+    .sort-asc::after { content: ' ↑'; opacity: 1; color: #5C2483; }
+    .sort-desc::after { content: ' ↓'; opacity: 1; color: #5C2483; }
   </style>
 </head>
-<!-- 移除 overflow-hidden 與固定高度，改為 min-h-screen 讓網頁自然向下延伸滾動 -->
 <body class="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col relative overflow-x-hidden">
 
   <!-- 庫存超標預警 Modal -->
@@ -63,7 +61,7 @@
     </div>
   </div>
 
-  <!-- Header (改為 sticky，固定在畫面頂端) -->
+  <!-- Header (Sticky) -->
   <header class="sticky top-0 shrink-0 bg-benq-main text-white px-4 md:px-6 py-3 md:py-4 shadow-md flex flex-col sm:flex-row justify-between items-center z-50 gap-2 sm:gap-0">
     <div class="flex items-center gap-2 md:gap-3 w-full sm:w-auto justify-center sm:justify-start">
       <i data-lucide="activity" class="w-5 h-5 md:w-6 md:h-6 shrink-0"></i>
@@ -224,7 +222,7 @@
               <h3 class="font-bold text-benq-dark flex items-center gap-2 text-sm md:text-base">
                 <i data-lucide="list" class="w-4 h-4"></i> 化學品清單紀錄
               </h3>
-              <!-- 批次刪除按鈕 (預設隱藏) -->
+              <!-- 批次刪除按鈕 -->
               <button id="btnBatchDelete" class="hidden bg-red-500 hover:bg-red-600 text-white text-xs px-3 py-1.5 rounded items-center gap-1 shadow-sm transition-colors">
                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> <span id="batchDeleteText">刪除選定項目 (0筆)</span>
               </button>
@@ -238,14 +236,14 @@
                   <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 text-center w-10">
                     <input type="checkbox" id="selectAllList" class="w-4 h-4 text-benq-main rounded border-slate-300 focus:ring-benq-main cursor-pointer">
                   </th>
-                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">盤點日期</th>
-                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">儲存場所</th>
-                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">標示版歸類</th>
-                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap">類別</th>
-                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 min-w-[120px]">化學品名稱</th>
-                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 text-right whitespace-nowrap">儲存量</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-200 sort-icon" onclick="handleSort('date')" id="sort-date">盤點日期</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-200 sort-icon" onclick="handleSort('location')" id="sort-location">儲存場所</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-200 sort-icon" onclick="handleSort('category')" id="sort-category">標示版歸類</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 whitespace-nowrap cursor-pointer hover:bg-slate-200 sort-icon" onclick="handleSort('petroleumClass')" id="sort-petroleumClass">類別</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 min-w-[120px] cursor-pointer hover:bg-slate-200 sort-icon" onclick="handleSort('chemName')" id="sort-chemName">化學品名稱</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 text-right whitespace-nowrap cursor-pointer hover:bg-slate-200 sort-icon" onclick="handleSort('storageAmt')" id="sort-storageAmt">儲存量</th>
                   <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 text-right whitespace-nowrap">管制量</th>
-                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 text-center whitespace-nowrap">倍數</th>
+                  <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 text-center whitespace-nowrap cursor-pointer hover:bg-slate-200 sort-icon" onclick="handleSort('multiple')" id="sort-multiple">倍數</th>
                   <th class="px-3 md:px-4 py-2 md:py-3 border-b border-slate-200 text-center font-bold w-16 md:w-24">操作</th>
                 </tr>
               </thead>
@@ -293,6 +291,7 @@
 
   <script>
     // --- 初始設定與資料 ---
+    // 最新化學品資料庫 (與 Excel 檔案完全同步，並包含 KR-519 等)
     const baseChemicals = [
       { name: 'SAIVINOL PL-7930', category: '添加劑', petroleumClass: '第一石油類', flashPoint: '-10', controlAmt: 200 },
       { name: 'SAIVINOL PL-7701', category: '添加劑', petroleumClass: '第一石油類', flashPoint: '-10', controlAmt: 200 },
@@ -308,22 +307,30 @@
       { name: 'SAIVINOL HARDENER K-901', category: '添加劑', petroleumClass: '第一石油類', flashPoint: '-4', controlAmt: 200 },
       { name: 'AD75', category: '添加劑', petroleumClass: '第二石油類', flashPoint: '53', controlAmt: 1000 },
       { name: '丙二醇甲醚醋酸酯', category: '丙二醇甲醚醋酸酯', petroleumClass: '第二石油類', flashPoint: '42', controlAmt: 1000 },
-      { name: '丙二醇甲醚', category: '丙二醇甲醚', petroleumClass: '第二石油類', flashPoint: '31', controlAmt: 1000 },
-      { name: 'CA-190T', category: '添加劑', petroleumClass: '第一石油類', flashPoint: '4', controlAmt: 200 },
-      { name: 'TAKENATETM D-262', category: '添加劑', petroleumClass: '第二石油類', flashPoint: '', controlAmt: 200 },
-      { name: '乙酸乙脂', category: '乙酸乙脂', petroleumClass: '第一石油類', flashPoint: '-4', controlAmt: 200 },
+      { name: '丙二醇甲醚', category: '丙二醇甲醚', petroleumClass: '第二石油類', flashPoint: '32', controlAmt: 1000 },
+      { name: '二甲苯', category: '二甲苯', petroleumClass: '第一石油類', flashPoint: '7', controlAmt: 200 },
       { name: '丁酮', category: '丁酮', petroleumClass: '第一石油類', flashPoint: '-9', controlAmt: 200 },
-      { name: '乙酸正丙脂', category: '乙酸正丙脂', petroleumClass: '第一石油類', flashPoint: '14', controlAmt: 200 },
-      { name: 'C0301廢棄物(第一石油類)', category: 'C0301廢棄物(第一石油類)', petroleumClass: '第一石油類', flashPoint: '', controlAmt: 200 },
+      { name: '乙酸正丙酯', category: '乙酸正丙酯', petroleumClass: '第一石油類', flashPoint: '13', controlAmt: 200 },
       { name: '乙酸正丁酯', category: '乙酸正丁酯', petroleumClass: '第二石油類', flashPoint: '22', controlAmt: 1000 },
-      { name: '正丁醇', category: '正丁醇', petroleumClass: '第二石油類', flashPoint: '35', controlAmt: 1000 },
-      { name: 'C0301廢棄物(第二石油類)', category: 'C0301廢棄物(第二石油類)', petroleumClass: '第二石油類', flashPoint: '', controlAmt: 1000 },
-      { name: '二甲苯', category: '二甲苯', petroleumClass: '第一石油類', flashPoint: '25', controlAmt: 200 },
-      { name: '異丙醇', category: '異丙醇', petroleumClass: '酒精類', flashPoint: '12', controlAmt: 400 },
-      { name: 'UV感壓膠', category: 'UV感壓膠', petroleumClass: '第三石油類', flashPoint: '100', controlAmt: 2000 },
-      { name: 'PSA廢膠', category: 'C0301廢棄物(第二石油類)', petroleumClass: '第二石油類', flashPoint: '', controlAmt: 1000 },
-      { name: 'KBM-503', category: '添加劑', petroleumClass: '第三石油類', flashPoint: '108', controlAmt: 2000 },
-      { name: 'KBM-402', category: '添加劑', petroleumClass: '第三石油類', flashPoint: '112', controlAmt: 2000 }
+      { name: '乙酸乙酯(EAC)', category: '乙酸乙酯(EAC)', petroleumClass: '第一石油類', flashPoint: '-4.4', controlAmt: 200 },
+      { name: 'OFS-6030 矽烷', category: '添加劑', petroleumClass: '第三石油類', flashPoint: '100', controlAmt: 2000 },
+      { name: 'UV 接著膠-UVAT01', category: 'UV感壓膠', petroleumClass: '第三石油類', flashPoint: '110', controlAmt: 2000 },
+      { name: 'UV 接著膠-UVAP02', category: 'UV感壓膠', petroleumClass: '第三石油類', flashPoint: '110', controlAmt: 2000 },
+      { name: 'TAKENATETM D-262', category: '添加劑', petroleumClass: '第二石油類', flashPoint: '29.2', controlAmt: 1000 },
+      { name: 'PSA廢膠', category: '感壓膠', petroleumClass: '第二石油類', flashPoint: '40', controlAmt: 1000 },
+      { name: 'NANOBYK-3650', category: '添加劑', petroleumClass: '第二石油類', flashPoint: '45', controlAmt: 1000 },
+      { name: 'MEK ST UP', category: '添加劑', petroleumClass: '第一石油類', flashPoint: '-9', controlAmt: 200 },
+      { name: 'KR-519', category: '添加劑', petroleumClass: '第二石油類', flashPoint: '24', controlAmt: 1000 },
+      { name: 'KBM-503', category: '添加劑', petroleumClass: '第三石油類', flashPoint: '112', controlAmt: 1000 },
+      { name: 'KBM-402', category: '添加劑', petroleumClass: '第三石油類', flashPoint: '94', controlAmt: 2000 },
+      { name: '異丙醇(IPA)', category: '異丙醇', petroleumClass: '酒精類', flashPoint: '12', controlAmt: 400 },
+      { name: 'HC6224', category: '感壓膠', petroleumClass: '第二石油類', flashPoint: '40', controlAmt: 1000 },
+      { name: 'HC6222-001', category: '感壓膠', petroleumClass: '第二石油類', flashPoint: '40', controlAmt: 1000 },
+      { name: 'GRANDIC PC 6191FT', category: '添加劑', petroleumClass: '第一石油類', flashPoint: '-4', controlAmt: 200 },
+      { name: 'GRANDIC PC 4900LT', category: '添加劑', petroleumClass: '第一石油類', flashPoint: '-4', controlAmt: 200 },
+      { name: 'CA-190T', category: '添加劑', petroleumClass: '第一石油類', flashPoint: '4', controlAmt: 200 },
+      { name: 'C0301廢棄物(第一石油類)', category: 'C0301廢棄物(第一石油類)', petroleumClass: '第一石油類', flashPoint: '4.4', controlAmt: 200 },
+      { name: 'BYKETOL-SPECIAL', category: '添加劑', petroleumClass: '第二石油類', flashPoint: '43', controlAmt: 1000 }
     ];
 
     const defaultChemicals = [];
@@ -345,22 +352,20 @@
     const applicationRules = {
       '危險品庫房': [
         { category: '添加劑', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 7697, applyMultiple: 38.485 },
-        { category: '乙酸乙脂', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 7520, applyMultiple: 37.60 },
+        { category: '乙酸乙酯(EAC)', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 7520, applyMultiple: 37.60 },
         { category: '丁酮', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 660, applyMultiple: 3.30 },
-        { category: '乙酸正丙脂', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 720, applyMultiple: 3.6 },
+        { category: '乙酸正丙酯', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 720, applyMultiple: 3.6 },
         { category: 'C0301廢棄物(第一石油類)', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 9600, applyMultiple: 48 },
         { category: '丙二醇甲醚醋酸酯', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 760, applyMultiple: 0.76 },
         { category: '丙二醇甲醚', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 760, applyMultiple: 0.76 },
         { category: '乙酸正丁酯', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 7200, applyMultiple: 7.20 },
-        { category: '正丁醇', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 1650, applyMultiple: 1.65 },
         { category: '添加劑', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 6203, applyMultiple: 6.2 },
         { category: '感壓膠', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 33480, applyMultiple: 33.48 },
-        { category: 'C0301廢棄物(第二石油類)', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 16000, applyMultiple: 16 },
         { category: '添加劑', petroleumClass: '第三石油類', controlAmt: 2000, applyAmt: 500, applyMultiple: 0.25 },
         { category: 'UV感壓膠', petroleumClass: '第三石油類', controlAmt: 2000, applyAmt: 3500, applyMultiple: 1.75 }
       ],
       '原膠室': [
-        { category: '乙酸乙脂', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 2246, applyMultiple: 11.23 },
+        { category: '乙酸乙酯(EAC)', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 2246, applyMultiple: 11.23 },
         { category: '添加劑', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 200, applyMultiple: 1 },
         { category: '丁酮', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 200, applyMultiple: 1 },
         { category: '二甲苯', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 185, applyMultiple: 0.93 },
@@ -369,8 +374,7 @@
         { category: '添加劑', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 350, applyMultiple: 0.35 },
         { category: '感壓膠', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 24000, applyMultiple: 24.00 },
         { category: '丙二醇甲醚', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 300, applyMultiple: 0.3 },
-        { category: '正丁醇', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 200, applyMultiple: 0.2 },
-        { category: '乙酸正丙脂', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 200, applyMultiple: 0.2 },
+        { category: '乙酸正丙酯', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 200, applyMultiple: 1.0 },
         { category: '添加劑', petroleumClass: '第三石油類', controlAmt: 2000, applyAmt: 111, applyMultiple: 0.06 },
         { category: '異丙醇', petroleumClass: '酒精類', controlAmt: 400, applyAmt: 320, applyMultiple: 0.8 }
       ]
@@ -378,7 +382,7 @@
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // 全域狀態
+    // 全域狀態 (包含排序設定)
     let state = {
       chemicals: [...defaultChemicals],
       inventoryData: [],
@@ -387,18 +391,23 @@
       editingId: null,
       formData: { date: todayStr, chemId: '', storageAmt: '' },
       filters: { startDate: todayStr, endDate: todayStr, location: '', petroleumClass: '', chemName: '' },
+      sortConfig: { key: null, direction: 1 }, // null 預設為輸入順序由新到舊
       selectedReportDate: todayStr,
       pendingSaveAction: null,
       chartInstance: null,
-      selectedRecordIds: new Set() // 新增：用於追蹤清單勾選狀態
+      selectedRecordIds: new Set()
     };
 
-    // --- 新增：本機記憶存取功能 ---
+    // --- 本機記憶存取 ---
     function loadData() {
       const stored = localStorage.getItem('bml_inventory_data');
       if (stored) {
         try {
           state.inventoryData = JSON.parse(stored);
+          // 為舊資料補上 createdAt，確保能以由新到舊排序
+          state.inventoryData.forEach((item, index) => {
+            if (!item.createdAt) item.createdAt = Date.now() - index * 1000;
+          });
         } catch (e) {
           state.inventoryData = [];
         }
@@ -453,18 +462,13 @@
       multiChemCheckboxes: document.getElementById('multiChemCheckboxes'),
       btnSelectAllChems: document.getElementById('btnSelectAllChems'),
       btnClearAllChems: document.getElementById('btnClearAllChems'),
-      
-      // 新增：批次刪除相關 DOM
       selectAllList: document.getElementById('selectAllList'),
       btnBatchDelete: document.getElementById('btnBatchDelete'),
       batchDeleteText: document.getElementById('batchDeleteText'),
-
-      // 新增的 DOM 元素
       btnToggleChartChem: document.getElementById('btnToggleChartChem'),
       chartChemDropdownPanel: document.getElementById('chartChemDropdownPanel'),
       chartChemDropdownContainer: document.getElementById('chartChemDropdownContainer'),
       chartChemBtnText: document.getElementById('chartChemBtnText'),
-
       warningModal: document.getElementById('warningModal'),
       modalMsg: document.getElementById('modalMsg'),
       modalApplyAmt: document.getElementById('modalApplyAmt'),
@@ -479,7 +483,7 @@
     // --- 初始化 ---
     function init() {
       lucide.createIcons();
-      loadData(); // 取代原本的 initMockData，改為讀取本機記憶
+      loadData(); 
       DOM.updateTime.innerText = `資料更新時間：${new Date().toLocaleString('zh-TW')}`;
       
       DOM.inputDate.value = state.formData.date;
@@ -492,7 +496,6 @@
       processData();
     }
 
-    // 初始化圖表多選清單
     function initMultiChemSelect() {
       const uniqueNames = [...new Set(baseChemicals.map(c => c.name))];
       DOM.multiChemCheckboxes.innerHTML = uniqueNames.map(name => `
@@ -502,13 +505,11 @@
         </label>
       `).join('');
 
-      // 綁定 Checkbox 變更事件
       document.querySelectorAll('.chem-checkbox').forEach(cb => {
         cb.addEventListener('change', renderChart);
       });
     }
 
-    // --- 資料處理核心 ---
     function processData() {
       const fullData = state.inventoryData.map(record => {
         const c = state.chemicals.find(x => x.id === record.chemId) || {};
@@ -520,9 +521,9 @@
           petroleumClass: c.petroleumClass || '未分類',
           flashPoint: c.flashPoint || '',
           controlAmt: c.controlAmt || 1,
-          multiple: c.controlAmt ? (record.storageAmt / c.controlAmt).toFixed(2) : 'N/A'
+          multiple: c.controlAmt ? parseFloat((record.storageAmt / c.controlAmt).toFixed(2)) : 0
         };
-      }).sort((a, b) => new Date(b.date) - new Date(a.date));
+      });
 
       state.filteredData = fullData.filter(record => {
         let pass = true;
@@ -534,8 +535,8 @@
         return pass;
       });
 
-      // Update Report Date Options
-      const availableDates = [...new Set(state.filteredData.map(d => d.date))];
+      // Update Report Date Options (Sorted by date desc for the dropdown)
+      const availableDates = [...new Set(state.filteredData.map(d => d.date))].sort((a,b)=> new Date(b) - new Date(a));
       DOM.reportDateSelect.innerHTML = availableDates.length > 0 
         ? availableDates.map(d => `<option value="${d}">${d}</option>`).join('')
         : `<option value="">無資料</option>`;
@@ -550,7 +551,6 @@
       renderApp();
     }
 
-    // --- 畫面更新 ---
     function renderApp() {
       updateTabsUI();
       if (state.activeTab === 'summary') renderSummary();
@@ -576,15 +576,13 @@
     function updateFilterDropdowns() {
       const locs = [...new Set(state.chemicals.map(c => c.location))];
       const petros = [...new Set(state.chemicals.map(c => c.petroleumClass))];
-      
       DOM.filterLocation.innerHTML = '<option value="">全區域</option>' + locs.map(l => `<option value="${l}">${l}</option>`).join('');
       DOM.filterClass.innerHTML = '<option value="">全類別</option>' + petros.map(p => `<option value="${p}">${p}</option>`).join('');
-      
       DOM.filterLocation.value = state.filters.location;
       DOM.filterClass.value = state.filters.petroleumClass;
     }
 
-    // --- 渲染 管制表彙整 ---
+    // --- 管制表彙整 ---
     function renderSummary() {
       const reportData = state.filteredData.filter(d => d.date === state.selectedReportDate);
       let html = '';
@@ -737,16 +735,53 @@
       DOM.summaryContainer.innerHTML = html || '<div class="text-center text-slate-400 py-8">查無資料</div>';
     }
 
+    // --- 點擊標題排序 ---
+    window.handleSort = function(key) {
+      if (state.sortConfig.key === key) {
+        state.sortConfig.direction *= -1;
+      } else {
+        state.sortConfig.key = key;
+        state.sortConfig.direction = 1;
+      }
+      
+      // 更新箭頭 UI
+      document.querySelectorAll('.sort-icon').forEach(el => {
+        el.classList.remove('sort-asc', 'sort-desc');
+      });
+      const th = document.getElementById(`sort-${key}`);
+      if (th) {
+        th.classList.add(state.sortConfig.direction === 1 ? 'sort-asc' : 'sort-desc');
+      }
+
+      renderList();
+      lucide.createIcons();
+    };
+
     // --- 渲染 化學品清單 ---
     function renderList() {
       DOM.listCount.innerText = `共 ${state.filteredData.length} 筆明細`;
-      if (state.filteredData.length === 0) {
+
+      let displayData = [...state.filteredData];
+      
+      // 進行排序：有選擇欄位則依欄位排，否則預設依 createdAt 由新到舊
+      if (state.sortConfig.key) {
+        displayData.sort((a, b) => {
+          let valA = a[state.sortConfig.key];
+          let valB = b[state.sortConfig.key];
+          if (typeof valA === 'string') return valA.localeCompare(valB) * state.sortConfig.direction;
+          return (valA > valB ? 1 : -1) * state.sortConfig.direction;
+        });
+      } else {
+        displayData.sort((a, b) => b.createdAt - a.createdAt);
+      }
+
+      if (displayData.length === 0) {
         DOM.listBody.innerHTML = `<tr><td colspan="10" class="px-4 py-8 text-center text-slate-400">尚無符合條件的清單資料</td></tr>`;
         updateBatchDeleteUI();
         return;
       }
       
-      DOM.listBody.innerHTML = state.filteredData.map(row => {
+      DOM.listBody.innerHTML = displayData.map(row => {
         const isChecked = state.selectedRecordIds.has(row.id) ? 'checked' : '';
         return `
         <tr class="bg-white border-b border-slate-100 hover:bg-slate-50 transition-colors ${isChecked ? 'bg-purple-50/30' : ''}">
@@ -819,10 +854,9 @@
         return;
       }
 
-      // 取得多選的化學品清單 (改由 checkboxes 取得)
+      // 取得多選的化學品清單
       const selectedChems = Array.from(document.querySelectorAll('.chem-checkbox:checked')).map(cb => cb.value);
       
-      // 更新下拉按鈕文字提示
       if (DOM.chartChemBtnText) {
         if (selectedChems.length === 0) {
           DOM.chartChemBtnText.innerText = '請展開勾選欲顯示的項目...';
@@ -850,7 +884,6 @@
           return record ? record.storageAmt : null;
         });
         
-        // 生成不同的顏色
         const hue = (index * 360) / selectedChems.length;
         const color = `hsl(${hue}, 70%, 50%)`;
         const bgColor = `hsla(${hue}, 70%, 50%, 0.1)`;
@@ -950,7 +983,7 @@
     window.handleDelete = function(id) {
       if (confirm('確定要刪除這筆庫存紀錄嗎？這將無法復原。')) {
         state.inventoryData = state.inventoryData.filter(r => r.id !== id);
-        saveDataToStorage(); // 刪除後自動儲存
+        saveDataToStorage();
         processData();
       }
     };
@@ -961,7 +994,6 @@
       DOM.tabs.list.addEventListener('click', () => { state.activeTab = 'list'; renderApp(); });
       DOM.tabs.chart.addEventListener('click', () => { state.activeTab = 'chart'; renderApp(); });
 
-      // 新增：全選列表事件
       if (DOM.selectAllList) {
         DOM.selectAllList.addEventListener('change', (e) => {
           const isChecked = e.target.checked;
@@ -974,33 +1006,29 @@
         });
       }
 
-      // 新增：批次刪除點擊事件
       if (DOM.btnBatchDelete) {
         DOM.btnBatchDelete.addEventListener('click', () => {
           if (confirm(`確定要刪除選定的 ${state.selectedRecordIds.size} 筆庫存紀錄嗎？\n(此操作無法復原)`)) {
             state.inventoryData = state.inventoryData.filter(r => !state.selectedRecordIds.has(r.id));
             state.selectedRecordIds.clear();
-            saveDataToStorage(); // 批次刪除後自動儲存
-            processData(); // 會自動重新過濾並呼叫 renderApp()
+            saveDataToStorage();
+            processData(); 
           }
         });
       }
 
-      // 圖表下拉選單展開/收合
       if (DOM.btnToggleChartChem) {
         DOM.btnToggleChartChem.addEventListener('click', () => {
           DOM.chartChemDropdownPanel.classList.toggle('hidden');
         });
       }
 
-      // 點擊外部關閉圖表下拉選單
       document.addEventListener('mousedown', (e) => {
         if (DOM.chartChemDropdownContainer && !DOM.chartChemDropdownContainer.contains(e.target)) {
           DOM.chartChemDropdownPanel.classList.add('hidden');
         }
       });
 
-      // 全選 / 清除全選按鈕
       if (DOM.btnSelectAllChems) {
         DOM.btnSelectAllChems.addEventListener('click', () => {
           document.querySelectorAll('.chem-checkbox').forEach(cb => cb.checked = true);
@@ -1144,12 +1172,17 @@
       if (state.editingId) {
         state.inventoryData = state.inventoryData.map(item => item.id === state.editingId ? { ...item, date: state.formData.date, chemId: state.formData.chemId, storageAmt: parseFloat(state.formData.storageAmt) } : item);
       } else {
-        state.inventoryData.push({ id: crypto.randomUUID(), date: state.formData.date, chemId: state.formData.chemId, storageAmt: parseFloat(state.formData.storageAmt) });
+        state.inventoryData.unshift({ 
+          id: crypto.randomUUID(), 
+          createdAt: Date.now(),
+          date: state.formData.date, 
+          chemId: state.formData.chemId, 
+          storageAmt: parseFloat(state.formData.storageAmt) 
+        });
       }
       
-      saveDataToStorage(); // 新增或修改後自動儲存
+      saveDataToStorage();
 
-      // 修改：儲存後保留「日期」與「儲存區域」，僅清空化學品與數量，方便連續輸入
       state.formData.chemId = '';
       state.formData.storageAmt = '';
       state.editingId = null;
@@ -1228,10 +1261,10 @@
               chem = { id: crypto.randomUUID(), name, location: loc, category: cat, petroleumClass: petro, flashPoint: flash, controlAmt: ctrl };
               state.chemicals.push(chem);
             }
-            imported.push({ id: crypto.randomUUID(), date: dStr, chemId: chem.id, storageAmt: amt });
+            imported.push({ id: crypto.randomUUID(), createdAt: Date.now() + i, date: dStr, chemId: chem.id, storageAmt: amt });
           }
           state.inventoryData.push(...imported);
-          saveDataToStorage(); // 匯入完成後自動儲存
+          saveDataToStorage(); 
           processData();
           alert(`成功從 Excel 匯入 ${imported.length} 筆紀錄`);
         } catch(err) { alert('匯入失敗，請確認檔案格式'); }
@@ -1250,25 +1283,22 @@
       const fileName = `BML_公共危險品庫存_${new Date().toISOString().split('T')[0]}.xlsx`;
       const file = new File([excelBuffer], fileName, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-      // 檢查是否為行動裝置，行動裝置呼叫原生分享選單體驗較佳
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
       if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
         try { 
           await navigator.share({ title: 'BML 庫存報表', text: '請查收公共危險品庫存資料。', files: [file] }); 
-          return; // 原生分享成功即結束
+          return; 
         } 
         catch (err) { console.log('原生分享取消或失敗', err); }
       } 
       
-      // 替代方案：因為 LINE 的捷徑不支援直接「夾帶實體檔案」，所以先自動下載檔案，再喚醒 LINE
       XLSX.writeFile(wb, fileName);
       
       const lineText = encodeURIComponent('您好，這是我剛剛匯出的「BML 公共危險品庫存報表」。\n(請稍後查收我手動上傳的 Excel 檔案)');
       const confirmMsg = '【系統提示】\n由於 LINE 系統限制，無法直接透過網頁夾帶檔案。\n\n系統已為您「自動下載」Excel 檔案！\n點擊「確定」將會開啟 LINE，請您在 LINE 中手動上傳剛剛下載的檔案。';
       
       if (confirm(confirmMsg)) {
-        // 喚醒 LINE App 或開啟 LINE 網頁版分享介面
         window.open(`https://line.me/R/msg/text/?${lineText}`, '_blank');
       }
     }
