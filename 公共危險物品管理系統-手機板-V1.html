@@ -91,7 +91,8 @@
           <select id="inputLocation" class="w-full border border-slate-300 rounded-md p-2 md:p-2.5 text-sm md:text-base focus:ring-2 focus:ring-benq-main outline-none bg-white" required>
             <option value="" disabled selected>請先選擇儲存區域...</option>
             <option value="危險品庫房">危險品庫房</option>
-            <option value="原膠室(C4+P1)">原膠室(C4+P1)</option>
+            <option value="原膠室(C4)">原膠室(C4)</option>
+            <option value="原膠室(P1)">原膠室(P1)</option>
           </select>
         </div>
 
@@ -145,12 +146,19 @@
             <label class="block text-[10px] md:text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i>結束日期</label>
             <input type="date" id="filterEnd" class="w-full border border-slate-300 rounded p-1.5 text-xs md:text-sm focus:ring-benq-main outline-none"/>
           </div>
-          <div>
+          
+          <!-- 改為多選按鈕的儲存區域篩選 -->
+          <div class="relative">
             <label class="block text-[10px] md:text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i>儲存區域</label>
-            <select id="filterLocation" class="w-full border border-slate-300 rounded p-1.5 text-xs md:text-sm bg-white focus:ring-benq-main outline-none">
-              <option value="">全區域</option>
-            </select>
+            <button type="button" id="btnToggleLocFilter" class="w-full border border-slate-300 rounded p-1.5 text-xs md:text-sm bg-white focus:ring-benq-main outline-none flex justify-between items-center text-left">
+              <span id="locFilterBtnText" class="truncate text-slate-600">全區域</span>
+              <i data-lucide="chevron-down" class="w-3 h-3 ml-1 text-slate-400 pointer-events-none shrink-0"></i>
+            </button>
+            <div id="locFilterDropdownPanel" class="hidden absolute z-50 w-full min-w-[120px] mt-1 bg-white border border-slate-200 rounded-md shadow-lg flex flex-col overflow-hidden">
+              <div id="locCheckboxes" class="max-h-48 overflow-y-auto p-2 flex flex-col gap-1 text-xs md:text-sm"></div>
+            </div>
           </div>
+
           <div>
             <label class="block text-[10px] md:text-xs text-slate-500 mb-1 flex items-center gap-1"><i data-lucide="layers" class="w-3 h-3"></i>類別</label>
             <select id="filterClass" class="w-full border border-slate-300 rounded p-1.5 text-xs md:text-sm bg-white focus:ring-benq-main outline-none">
@@ -267,7 +275,7 @@
               <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 pointer-events-none"></i>
             </button>
             
-            <!-- 下拉選單面板 (預設隱藏) -->
+            <!-- 下拉選單面板 -->
             <div id="chartChemDropdownPanel" class="hidden absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl flex flex-col overflow-hidden">
               <div class="p-2 border-b border-slate-100 flex gap-2 bg-slate-50 shrink-0">
                 <button type="button" id="btnSelectAllChems" class="text-xs bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-4 py-1.5 rounded transition-colors font-medium shadow-sm flex-1">全選</button>
@@ -291,7 +299,7 @@
 
   <script>
     // --- 初始設定與資料 ---
-    // 最新化學品資料庫 (與 Excel 檔案完全同步，並包含 KR-519 等)
+    // 最新化學品資料庫
     const baseChemicals = [
       { name: 'SAIVINOL PL-7930', category: '添加劑', petroleumClass: '第一石油類', flashPoint: '-10', controlAmt: 200 },
       { name: 'SAIVINOL PL-7701', category: '添加劑', petroleumClass: '第一石油類', flashPoint: '-10', controlAmt: 200 },
@@ -335,7 +343,7 @@
 
     const defaultChemicals = [];
     let chemIdCounter = 1;
-    ['危險品庫房', '原膠室(C4+P1)'].forEach(loc => {
+    ['危險品庫房', '原膠室(C4)', '原膠室(P1)'].forEach(loc => {
       baseChemicals.forEach(c => {
         defaultChemicals.push({
           id: String(chemIdCounter++),
@@ -359,22 +367,26 @@
         { category: '丙二醇甲醚醋酸酯', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 760, applyMultiple: 0.76 },
         { category: '丙二醇甲醚', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 760, applyMultiple: 0.76 },
         { category: '乙酸正丁酯', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 7200, applyMultiple: 7.20 },
+        { category: '正丁醇', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 1650, applyMultiple: 1.65 },
         { category: '添加劑', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 6203, applyMultiple: 6.2 },
         { category: '感壓膠', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 33480, applyMultiple: 33.48 },
+        { category: 'C0301廢棄物(第二石油類)', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 16000, applyMultiple: 16 },
         { category: '添加劑', petroleumClass: '第三石油類', controlAmt: 2000, applyAmt: 500, applyMultiple: 0.25 },
         { category: 'UV感壓膠', petroleumClass: '第三石油類', controlAmt: 2000, applyAmt: 3500, applyMultiple: 1.75 }
       ],
-      '原膠室': [
-        { category: '乙酸乙酯(EAC)', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 2246, applyMultiple: 11.23 },
+      // 管制表針對原膠室(C4)與原膠室(P1)進行合併防呆
+      '原膠室(C4+P1)': [
+        { category: '乙酸乙酯(EAC)', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 2046, applyMultiple: 10.23 },
         { category: '添加劑', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 200, applyMultiple: 1 },
         { category: '丁酮', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 200, applyMultiple: 1 },
         { category: '二甲苯', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 185, applyMultiple: 0.93 },
         { category: '乙酸正丁酯', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 720, applyMultiple: 0.72 },
         { category: '丙二醇甲醚醋酸酯', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 420, applyMultiple: 0.42 },
-        { category: '添加劑', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 350, applyMultiple: 0.35 },
-        { category: '感壓膠', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 24000, applyMultiple: 24.00 },
+        { category: '添加劑', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 550, applyMultiple: 0.55 },
+        { category: '感壓膠', label: '感壓膠(含廢膠)', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 24000, applyMultiple: 24.00 },
         { category: '丙二醇甲醚', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 300, applyMultiple: 0.3 },
         { category: '乙酸正丙酯', petroleumClass: '第一石油類', controlAmt: 200, applyAmt: 200, applyMultiple: 1.0 },
+        { category: '正丁醇', petroleumClass: '第二石油類', controlAmt: 1000, applyAmt: 200, applyMultiple: 0.2 },
         { category: '添加劑', petroleumClass: '第三石油類', controlAmt: 2000, applyAmt: 111, applyMultiple: 0.06 },
         { category: '異丙醇', petroleumClass: '酒精類', controlAmt: 400, applyAmt: 320, applyMultiple: 0.8 }
       ]
@@ -382,7 +394,7 @@
 
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // 全域狀態 (包含排序設定)
+    // 全域狀態 (包含排序與複選設定)
     let state = {
       chemicals: [...defaultChemicals],
       inventoryData: [],
@@ -390,8 +402,8 @@
       activeTab: 'summary',
       editingId: null,
       formData: { date: todayStr, chemId: '', storageAmt: '' },
-      filters: { startDate: todayStr, endDate: todayStr, location: '', petroleumClass: '', chemName: '' },
-      sortConfig: { key: null, direction: 1 }, // null 預設為輸入順序由新到舊
+      filters: { startDate: todayStr, endDate: todayStr, locations: [], petroleumClass: '', chemName: '' },
+      sortConfig: { key: null, direction: 1 }, 
       selectedReportDate: todayStr,
       pendingSaveAction: null,
       chartInstance: null,
@@ -404,7 +416,6 @@
       if (stored) {
         try {
           state.inventoryData = JSON.parse(stored);
-          // 為舊資料補上 createdAt，確保能以由新到舊排序
           state.inventoryData.forEach((item, index) => {
             if (!item.createdAt) item.createdAt = Date.now() - index * 1000;
           });
@@ -436,7 +447,10 @@
       editingBadge: document.getElementById('editingBadge'),
       filterStart: document.getElementById('filterStart'),
       filterEnd: document.getElementById('filterEnd'),
-      filterLocation: document.getElementById('filterLocation'),
+      btnToggleLocFilter: document.getElementById('btnToggleLocFilter'),
+      locFilterDropdownPanel: document.getElementById('locFilterDropdownPanel'),
+      locCheckboxes: document.getElementById('locCheckboxes'),
+      locFilterBtnText: document.getElementById('locFilterBtnText'),
       filterClass: document.getElementById('filterClass'),
       filterName: document.getElementById('filterName'),
       btnClearFilterName: document.getElementById('btnClearFilterName'),
@@ -480,6 +494,28 @@
       btnForceSave: document.getElementById('btnForceSave')
     };
 
+    // --- 篩選執行 ---
+    window.applyFilters = function() {
+      state.filters.startDate = DOM.filterStart.value;
+      state.filters.endDate = DOM.filterEnd.value;
+      
+      // 更新區域篩選狀態 (陣列)
+      state.filters.locations = Array.from(document.querySelectorAll('.loc-checkbox:checked')).map(cb => cb.value);
+      if (state.filters.locations.length === 0) {
+        DOM.locFilterBtnText.innerText = '全區域';
+      } else {
+        DOM.locFilterBtnText.innerText = `已選 ${state.filters.locations.length} 項`;
+      }
+
+      state.filters.petroleumClass = DOM.filterClass.value;
+      state.filters.chemName = DOM.filterName.value;
+      
+      if(state.filters.chemName) DOM.btnClearFilterName.classList.remove('hidden');
+      else DOM.btnClearFilterName.classList.add('hidden');
+      
+      processData();
+    };
+
     // --- 初始化 ---
     function init() {
       lucide.createIcons();
@@ -510,6 +546,26 @@
       });
     }
 
+    function updateFilterDropdowns() {
+      const locs = [...new Set(state.chemicals.map(c => c.location))];
+      const petros = [...new Set(state.chemicals.map(c => c.petroleumClass))];
+      
+      // 繪製區域複選 Checkboxes
+      DOM.locCheckboxes.innerHTML = locs.map(l => `
+        <label class="flex items-center gap-2 cursor-pointer hover:bg-slate-100 p-1.5 rounded transition-colors">
+          <input type="checkbox" value="${l}" class="loc-checkbox w-4 h-4 text-benq-main rounded border-slate-300 focus:ring-benq-main" ${state.filters.locations.includes(l) ? 'checked' : ''}>
+          <span class="truncate text-slate-700">${l}</span>
+        </label>
+      `).join('');
+
+      document.querySelectorAll('.loc-checkbox').forEach(cb => {
+        cb.addEventListener('change', window.applyFilters);
+      });
+
+      DOM.filterClass.innerHTML = '<option value="">全類別</option>' + petros.map(p => `<option value="${p}">${p}</option>`).join('');
+      DOM.filterClass.value = state.filters.petroleumClass;
+    }
+
     function processData() {
       const fullData = state.inventoryData.map(record => {
         const c = state.chemicals.find(x => x.id === record.chemId) || {};
@@ -530,12 +586,16 @@
         if (state.filters.startDate) pass = pass && new Date(record.date) >= new Date(state.filters.startDate);
         if (state.filters.endDate) pass = pass && new Date(record.date) <= new Date(state.filters.endDate);
         if (state.filters.chemName) pass = pass && record.chemName.toLowerCase().includes(state.filters.chemName.toLowerCase());
-        if (state.filters.location) pass = pass && record.location === state.filters.location;
+        
+        // 陣列包含判斷
+        if (state.filters.locations && state.filters.locations.length > 0) {
+          pass = pass && state.filters.locations.includes(record.location);
+        }
+        
         if (state.filters.petroleumClass) pass = pass && record.petroleumClass === state.filters.petroleumClass;
         return pass;
       });
 
-      // Update Report Date Options (Sorted by date desc for the dropdown)
       const availableDates = [...new Set(state.filteredData.map(d => d.date))].sort((a,b)=> new Date(b) - new Date(a));
       DOM.reportDateSelect.innerHTML = availableDates.length > 0 
         ? availableDates.map(d => `<option value="${d}">${d}</option>`).join('')
@@ -573,25 +633,56 @@
       });
     }
 
-    function updateFilterDropdowns() {
-      const locs = [...new Set(state.chemicals.map(c => c.location))];
-      const petros = [...new Set(state.chemicals.map(c => c.petroleumClass))];
-      DOM.filterLocation.innerHTML = '<option value="">全區域</option>' + locs.map(l => `<option value="${l}">${l}</option>`).join('');
-      DOM.filterClass.innerHTML = '<option value="">全類別</option>' + petros.map(p => `<option value="${p}">${p}</option>`).join('');
-      DOM.filterLocation.value = state.filters.location;
-      DOM.filterClass.value = state.filters.petroleumClass;
-    }
-
     // --- 管制表彙整 ---
     function renderSummary() {
-      const reportData = state.filteredData.filter(d => d.date === state.selectedReportDate);
+      // 管制表只吃時間、名稱、類別過濾
+      const baseDataForSummary = state.inventoryData.map(record => {
+        const c = state.chemicals.find(x => x.id === record.chemId) || {};
+        return {
+          ...record,
+          chemName: c.name || '未知化學品',
+          location: c.location || '未知場所',
+          category: c.category || '未分類',
+          petroleumClass: c.petroleumClass || '未分類',
+          controlAmt: c.controlAmt || 1
+        };
+      }).filter(d => {
+         let pass = (d.date === state.selectedReportDate);
+         if (state.filters.chemName && !d.chemName.toLowerCase().includes(state.filters.chemName.toLowerCase())) pass = false;
+         if (state.filters.petroleumClass && d.petroleumClass !== state.filters.petroleumClass) pass = false;
+         return pass;
+      });
+
       let html = '';
 
-      ['危險品庫房', '原膠室'].forEach(loc => {
-        if (state.filters.location && loc !== state.filters.location) return;
+      // 動態決定要渲染的區塊與資料過濾條件
+      let renderGroups = [];
+      const locs = state.filters.locations || [];
 
-        const locData = reportData.filter(d => d.location.includes(loc));
-        const rules = applicationRules[loc] || [];
+      if (locs.length === 0) {
+        renderGroups.push({ title: '危險品庫房', dataFilter: d => d.location === '危險品庫房', ruleKey: '危險品庫房' });
+        renderGroups.push({ title: '原膠室(C4+P1)', dataFilter: d => d.location.includes('原膠室'), ruleKey: '原膠室(C4+P1)' });
+      } else {
+        if (locs.includes('危險品庫房')) {
+          renderGroups.push({ title: '危險品庫房', dataFilter: d => d.location === '危險品庫房', ruleKey: '危險品庫房' });
+        }
+        
+        const hasC4 = locs.includes('原膠室(C4)');
+        const hasP1 = locs.includes('原膠室(P1)');
+
+        if (hasC4 && hasP1) {
+          renderGroups.push({ title: '原膠室(C4+P1)', dataFilter: d => d.location.includes('原膠室'), ruleKey: '原膠室(C4+P1)' });
+        } else if (hasC4) {
+          renderGroups.push({ title: '原膠室(C4)', dataFilter: d => d.location === '原膠室(C4)', ruleKey: '原膠室(C4+P1)' });
+        } else if (hasP1) {
+          renderGroups.push({ title: '原膠室(P1)', dataFilter: d => d.location === '原膠室(P1)', ruleKey: '原膠室(C4+P1)' });
+        }
+      }
+
+      renderGroups.forEach(group => {
+        const locData = baseDataForSummary.filter(group.dataFilter);
+
+        const rules = applicationRules[group.ruleKey] || [];
         const groupedRules = {};
         
         rules.forEach(r => {
@@ -626,13 +717,13 @@
 
         if (totalRowsCount === 0) totalRowsCount = 1;
         const isLocPass = locTotalActualMultiple <= locTotalApplyMultiple;
-        const headerColor = loc === '危險品庫房' ? 'bg-red-50 border-red-200 text-red-900' : 'bg-purple-50 border-purple-200 text-benq-dark';
+        const headerColor = group.ruleKey === '危險品庫房' ? 'bg-red-50 border-red-200 text-red-900' : 'bg-purple-50 border-purple-200 text-benq-dark';
 
         html += `
           <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col shrink-0">
             <div class="p-3 border-b flex flex-col md:flex-row gap-3 justify-between items-center ${headerColor}">
               <h3 class="font-bold flex items-center gap-2 text-base md:text-lg">
-                <i data-lucide="map-pin" class="w-4 h-4 md:w-5 md:h-5"></i> ${loc === '原膠室' ? '原膠室(C4+P1)' : loc}
+                <i data-lucide="map-pin" class="w-4 h-4 md:w-5 md:h-5"></i> ${group.title}
               </h3>
               <div class="flex items-center gap-2 md:gap-4 text-xs md:text-sm bg-white/70 px-3 md:px-4 py-2 rounded-md border shadow-sm border-slate-200/50 flex-wrap sm:flex-nowrap">
                 <div class="flex items-center gap-1 md:gap-2">
@@ -656,7 +747,7 @@
                 <thead class="text-[10px] md:text-xs text-slate-700 bg-slate-100 border-b-2 border-slate-300 text-center">
                   <tr>
                     <th rowspan="2" class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 align-middle bg-slate-200/50 w-20 md:w-24">危物種類</th>
-                    <th colspan="5" class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-purple-100/60 text-benq-dark tracking-wide">${loc === '原膠室' ? '原膠室(C4+P1)' : loc} 合法申請量</th>
+                    <th colspan="5" class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-purple-100/60 text-benq-dark tracking-wide">${group.ruleKey} 合法申請量</th>
                     <th colspan="3" class="px-2 md:px-3 py-1.5 md:py-2 border border-slate-200 bg-amber-100/60">實際儲存量及符合度</th>
                     <th rowspan="2" class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 align-middle bg-emerald-100/60 w-24 md:w-32">種類符合度</th>
                   </tr>
@@ -701,7 +792,7 @@
               html += `<td rowspan="${classRowSpan}" class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 font-bold text-center align-middle bg-slate-50/50">${pClass}</td>`;
             }
             
-            html += `<td class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 font-medium text-slate-800 text-center">${rule.category} ${rule.isLeftover ? '<span class="text-red-500 text-[10px] md:text-xs block">(無申請)</span>' : ''}</td>`;
+            html += `<td class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 font-medium text-slate-800 text-center">${rule.label || rule.category} ${rule.isLeftover ? '<span class="text-red-500 text-[10px] md:text-xs block">(無申請)</span>' : ''}</td>`;
             html += `<td class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 text-right text-slate-600">${rule.applyAmt.toFixed(2)}</td>`;
             
             if (rIdx === 0) html += `<td rowspan="${classRowSpan}" class="px-2 md:px-3 py-2 md:py-3 border border-slate-200 text-center align-middle bg-purple-50/40 font-bold text-benq-main text-sm md:text-base">${classApplySum.toFixed(2)}</td>`;
@@ -744,7 +835,6 @@
         state.sortConfig.direction = 1;
       }
       
-      // 更新箭頭 UI
       document.querySelectorAll('.sort-icon').forEach(el => {
         el.classList.remove('sort-asc', 'sort-desc');
       });
@@ -763,7 +853,6 @@
 
       let displayData = [...state.filteredData];
       
-      // 進行排序：有選擇欄位則依欄位排，否則預設依 createdAt 由新到舊
       if (state.sortConfig.key) {
         displayData.sort((a, b) => {
           let valA = a[state.sortConfig.key];
@@ -807,7 +896,6 @@
         </tr>
       `}).join('');
 
-      // 綁定單筆勾選事件
       document.querySelectorAll('.row-checkbox').forEach(cb => {
         cb.addEventListener('change', (e) => {
           if (e.target.checked) {
@@ -824,7 +912,6 @@
       updateBatchDeleteUI();
     }
 
-    // --- 更新批次刪除 UI ---
     function updateBatchDeleteUI() {
       if (!DOM.btnBatchDelete || !DOM.batchDeleteText || !DOM.selectAllList) return;
 
@@ -854,7 +941,6 @@
         return;
       }
 
-      // 取得多選的化學品清單
       const selectedChems = Array.from(document.querySelectorAll('.chem-checkbox:checked')).map(cb => cb.value);
       
       if (DOM.chartChemBtnText) {
@@ -944,12 +1030,13 @@
       if (!chem) { DOM.chemInfoPanel.classList.add('hidden'); return; }
 
       let appliedInfo = '無對應申請量';
-      const rules = applicationRules[chem.location] || [];
+      const ruleLocGroup = chem.location.includes('原膠室') ? '原膠室(C4+P1)' : chem.location;
+      const rules = applicationRules[ruleLocGroup] || [];
       const rule = rules.find(r => r.category === chem.category && r.petroleumClass === chem.petroleumClass);
       if (rule) appliedInfo = `${rule.applyAmt} L (${rule.applyMultiple} 倍)`;
 
       DOM.chemInfoPanel.innerHTML = `
-        <h4 class="font-bold text-benq-dark mb-2 border-b border-purple-200 pb-1">「${chem.location}」合法申請資訊</h4>
+        <h4 class="font-bold text-benq-dark mb-2 border-b border-purple-200 pb-1">「${ruleLocGroup}」合法申請資訊</h4>
         <div class="grid grid-cols-1 gap-1.5 text-slate-700">
           <div class="flex justify-between"><span class="text-slate-500">合法申請量</span> <span class="font-bold text-benq-main">${appliedInfo}</span></div>
           <div class="flex justify-between"><span class="text-slate-500">管制量基準</span> <span class="font-medium">${chem.controlAmt} L</span></div>
@@ -1017,13 +1104,26 @@
         });
       }
 
+      // 儲存區域複選下拉單
+      if (DOM.btnToggleLocFilter) {
+        DOM.btnToggleLocFilter.addEventListener('click', (e) => {
+          e.stopPropagation();
+          DOM.locFilterDropdownPanel.classList.toggle('hidden');
+        });
+      }
+
+      // 圖表下拉單
       if (DOM.btnToggleChartChem) {
-        DOM.btnToggleChartChem.addEventListener('click', () => {
+        DOM.btnToggleChartChem.addEventListener('click', (e) => {
+          e.stopPropagation();
           DOM.chartChemDropdownPanel.classList.toggle('hidden');
         });
       }
 
       document.addEventListener('mousedown', (e) => {
+        if (DOM.locFilterDropdownPanel && !DOM.btnToggleLocFilter.contains(e.target) && !DOM.locFilterDropdownPanel.contains(e.target)) {
+          DOM.locFilterDropdownPanel.classList.add('hidden');
+        }
         if (DOM.chartChemDropdownContainer && !DOM.chartChemDropdownContainer.contains(e.target)) {
           DOM.chartChemDropdownPanel.classList.add('hidden');
         }
@@ -1094,14 +1194,18 @@
         }
 
         const chem = state.chemicals.find(c => c.id === state.formData.chemId);
-        const rules = applicationRules[chem.location] || [];
+        const ruleLocGroup = chem.location.includes('原膠室') ? '原膠室(C4+P1)' : chem.location;
+        const rules = applicationRules[ruleLocGroup] || [];
         const rule = rules.find(r => r.category === chem.category && r.petroleumClass === chem.petroleumClass);
 
         if (rule) {
           const currentItems = state.inventoryData.filter(d => d.date === state.formData.date && d.id !== state.editingId);
           const currentTotal = currentItems.reduce((sum, item) => {
             const cInfo = state.chemicals.find(c => c.id === item.chemId);
-            if (cInfo && cInfo.location === chem.location && cInfo.category === chem.category && cInfo.petroleumClass === chem.petroleumClass) {
+            if (cInfo && 
+                (cInfo.location === chem.location || (ruleLocGroup === '原膠室(C4+P1)' && cInfo.location.includes('原膠室'))) && 
+                cInfo.category === chem.category && 
+                cInfo.petroleumClass === chem.petroleumClass) {
               return sum + item.storageAmt;
             }
             return sum;
@@ -1111,7 +1215,8 @@
           const projectedTotal = currentTotal + inputAmt;
 
           if (projectedTotal > rule.applyAmt) {
-            DOM.modalMsg.innerHTML = `「${chem.location}」的「${chem.category} (${chem.petroleumClass})」<br/><span class="text-red-600">庫存超過申請量，請調整庫存周轉率。</span>`;
+            const displayCat = rule.label || chem.category;
+            DOM.modalMsg.innerHTML = `「${ruleLocGroup}」的「${displayCat} (${chem.petroleumClass})」<br/><span class="text-red-600">庫存超過申請量，請調整庫存周轉率。</span>`;
             DOM.modalApplyAmt.innerText = `${rule.applyAmt.toFixed(2)} L`;
             DOM.modalCurrentTotal.innerText = currentTotal.toFixed(2);
             DOM.modalInputAmt.innerText = `+${inputAmt.toFixed(2)}`;
@@ -1130,31 +1235,23 @@
       DOM.btnCancelSave.addEventListener('click', () => { DOM.warningModal.classList.remove('flex'); DOM.warningModal.classList.add('hidden'); });
       DOM.btnForceSave.addEventListener('click', () => { if(state.pendingSaveAction) state.pendingSaveAction(); });
 
-      const applyFilters = () => {
-        state.filters.startDate = DOM.filterStart.value;
-        state.filters.endDate = DOM.filterEnd.value;
-        state.filters.location = DOM.filterLocation.value;
-        state.filters.petroleumClass = DOM.filterClass.value;
-        state.filters.chemName = DOM.filterName.value;
-        if(state.filters.chemName) DOM.btnClearFilterName.classList.remove('hidden');
-        else DOM.btnClearFilterName.classList.add('hidden');
-        processData();
-      };
-      
-      DOM.filterStart.addEventListener('change', applyFilters);
-      DOM.filterEnd.addEventListener('change', applyFilters);
-      DOM.filterLocation.addEventListener('change', applyFilters);
-      DOM.filterClass.addEventListener('change', applyFilters);
-      DOM.filterName.addEventListener('input', applyFilters);
-      DOM.btnClearFilterName.addEventListener('click', () => { DOM.filterName.value = ''; applyFilters(); });
+      DOM.filterStart.addEventListener('change', window.applyFilters);
+      DOM.filterEnd.addEventListener('change', window.applyFilters);
+      DOM.filterClass.addEventListener('change', window.applyFilters);
+      DOM.filterName.addEventListener('input', window.applyFilters);
+      DOM.btnClearFilterName.addEventListener('click', () => { DOM.filterName.value = ''; window.applyFilters(); });
       
       DOM.btnClearFilters.addEventListener('click', () => {
         DOM.filterStart.value = todayStr;
         DOM.filterEnd.value = todayStr;
-        DOM.filterLocation.value = '';
         DOM.filterClass.value = '';
         DOM.filterName.value = '';
-        applyFilters();
+        
+        document.querySelectorAll('.loc-checkbox').forEach(cb => cb.checked = false);
+        state.filters.locations = [];
+        DOM.locFilterBtnText.innerText = '全區域';
+        
+        window.applyFilters();
       });
 
       DOM.reportDateSelect.addEventListener('change', (e) => {
