@@ -1011,12 +1011,13 @@
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: c => `${c.dataset.label}: ${c.parsed.y} kg/L` } } },
-          scales: { y: { beginAtZero: true, grace: '20%', title: { display: true, text: '儲存量 (L)' } }, x: { title: { display: false } } }
+          scales: { y: { beginAtZero: true, grace: '30%', title: { display: true, text: '儲存量 (L)' } }, x: { title: { display: false } } }
         }
       });
     }
 
     function renderTrendChart() {
+      if (!window.Chart) return;
       const canvas = document.getElementById('trendChart');
       // Trend chart ignores normal chemical/class filters, relies only on date & trend loc dropdown
       const baseRawData = state.inventoryData.map(record => {
@@ -1052,13 +1053,15 @@
 
       const datasets = [];
       let conclusionHtml = '';
+      let maxLimitForScale = 0; // 追蹤最大合法上限，強制拉高 Y 軸
 
       selectedLocs.forEach(locGroup => {
         const rules = applicationRules[locGroup] || [];
         const limitValue = rules.reduce((acc, cur) => acc + cur.applyMultiple, 0);
+        if (limitValue > maxLimitForScale) maxLimitForScale = limitValue;
         
         const dataPoints = dates.map(date => {
-          const dayItems = baseRawData.filter(d => d.date === date && (locGroup === '原膠室(C4+P1)' ? d.location.includes('原膠室') : d.location === locGroup));
+          const dayItems = state.filteredData.filter(d => d.date === date && (locGroup === '原膠室(C4+P1)' ? d.location.includes('原膠室') : d.location === locGroup));
           return dayItems.reduce((sum, item) => sum + (item.storageAmt / item.controlAmt), 0);
         });
 
@@ -1120,12 +1123,12 @@
             legend: { position: 'top' }, 
             tooltip: { callbacks: { label: c => c.dataset.type === 'bar' ? `${c.dataset.label}: ${c.parsed.y.toFixed(2)} 倍` : '' } }
           },
-          scales: { y: { beginAtZero: true, grace: '20%', title: { display: true, text: '總倍數' } }, x: { title: { display: false } } }
+          scales: { y: { beginAtZero: true, grace: '30%', suggestedMax: maxLimitForScale, title: { display: true, text: '總倍數' } }, x: { title: { display: false } } }
         }
       });
     }
 
-    // --- STREAMING_CHUNK:Event Listeners & Actions... ---
+    // --- 表單與下拉選單邏輯 ---
     function updateDropdown() {
       const loc = DOM.inputLocation.value;
       if (!loc) {
