@@ -34,6 +34,9 @@
     .sort-icon::after { content: ' ↕'; opacity: 0.3; font-size: 0.8em; }
     .sort-asc::after { content: ' ↑'; opacity: 1; color: #5C2483; }
     .sort-desc::after { content: ' ↓'; opacity: 1; color: #5C2483; }
+    
+    /* 權限隱藏專用 */
+    .admin-hidden { display: none !important; }
   </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col relative overflow-x-hidden">
@@ -61,11 +64,37 @@
     </div>
   </div>
 
+  <!-- 管理者登入 Modal -->
+  <div id="adminModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
+    <div class="bg-white rounded-xl shadow-2xl p-5 md:p-6 w-full max-w-sm border-t-4 border-benq-main">
+      <div class="flex items-center gap-3 text-benq-main mb-4">
+        <i data-lucide="shield" class="w-6 h-6 shrink-0"></i>
+        <h3 id="adminModalTitle" class="text-base md:text-lg font-bold">管理者登入</h3>
+      </div>
+      <div id="adminLoginSection">
+        <p class="text-slate-600 text-sm mb-3">請輸入管理者密碼以啟用匯入/匯出功能</p>
+        <input type="password" id="adminPasswordInput" placeholder="請輸入密碼" class="w-full border border-slate-300 rounded-md p-2 mb-2 focus:ring-2 focus:ring-benq-main outline-none text-sm">
+        <p id="adminAuthError" class="text-red-500 text-xs hidden mb-2">密碼錯誤，請重新輸入。</p>
+      </div>
+      <div id="adminLogoutSection" class="hidden text-slate-700 mb-4 text-sm">
+        確定要登出管理者模式，並隱藏匯入/匯出功能嗎？
+      </div>
+      <div class="flex justify-end gap-3 mt-4">
+        <button id="btnCancelAdmin" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors text-sm font-medium">取消</button>
+        <button id="btnSubmitAdmin" class="px-4 py-2 bg-benq-main hover:bg-benq-dark text-white rounded-md transition-colors text-sm font-medium">確認</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Header (Sticky) -->
   <header class="sticky top-0 shrink-0 bg-benq-main text-white px-4 md:px-6 py-3 md:py-4 shadow-md flex flex-col sm:flex-row justify-between items-center z-50 gap-2 sm:gap-0">
     <div class="flex items-center gap-2 md:gap-3 w-full sm:w-auto justify-center sm:justify-start">
       <i data-lucide="activity" class="w-5 h-5 md:w-6 md:h-6 shrink-0"></i>
       <h1 class="text-lg md:text-xl font-bold tracking-wide truncate">BML 公共危險品管理系統</h1>
+      <!-- 管理者鎖頭按鈕 -->
+      <button id="btnAdminLogin" class="ml-1 text-white/70 hover:text-white transition-colors bg-white/10 hover:bg-white/20 p-1.5 rounded-full" title="切換管理員模式">
+        <i data-lucide="lock" id="adminLockIcon" class="w-4 h-4 md:w-5 md:h-5"></i>
+      </button>
     </div>
     <div id="updateTime" class="text-xs md:text-sm opacity-80 text-center sm:text-right w-full sm:w-auto"></div>
   </header>
@@ -180,13 +209,19 @@
           <button id="btnClearFilters" class="flex-1 md:flex-none justify-center flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 md:px-3 py-1.5 rounded-md text-xs md:text-sm border border-slate-300 transition-colors">
             <i data-lucide="eraser" class="w-3.5 h-3.5 md:w-4 md:h-4"></i> 清除
           </button>
-          <label class="flex-1 md:flex-none justify-center cursor-pointer flex items-center gap-1 md:gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 md:px-3 py-1.5 rounded-md text-xs md:text-sm border border-slate-300 transition-colors">
+          
+          <!-- 匯入 (管理者限定) -->
+          <label id="btnImportContainer" class="admin-hidden flex-1 md:flex-none justify-center cursor-pointer flex items-center gap-1 md:gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 md:px-3 py-1.5 rounded-md text-xs md:text-sm border border-slate-300 transition-colors">
             <i data-lucide="upload" class="w-3.5 h-3.5 md:w-4 md:h-4"></i> 匯入
             <input type="file" id="fileUpload" accept=".xlsx, .xls" class="hidden" />
           </label>
-          <button id="btnExportExcel" class="flex-1 md:flex-none justify-center flex items-center gap-1 md:gap-2 bg-green-600 hover:bg-green-700 text-white px-2 md:px-3 py-1.5 rounded-md text-xs md:text-sm transition-colors shadow-sm">
+          
+          <!-- 匯出 (管理者限定) -->
+          <button id="btnExportExcel" class="admin-hidden flex-1 md:flex-none justify-center flex items-center gap-1 md:gap-2 bg-green-600 hover:bg-green-700 text-white px-2 md:px-3 py-1.5 rounded-md text-xs md:text-sm transition-colors shadow-sm">
             <i data-lucide="download" class="w-3.5 h-3.5 md:w-4 md:h-4"></i> 匯出
           </button>
+          
+          <!-- LINE分享 (行動裝置限定) -->
           <button id="btnShareLine" class="flex-1 md:flex-none justify-center flex items-center gap-1 md:gap-2 bg-[#06C755] hover:bg-[#05b34c] text-white px-2 md:px-3 py-1.5 rounded-md text-xs md:text-sm transition-colors shadow-sm">
             <i data-lucide="share-2" class="w-3.5 h-3.5 md:w-4 md:h-4"></i> 分享
           </button>
@@ -458,8 +493,7 @@
     };
 
     const todayStr = new Date().toISOString().split('T')[0];
-
-    // 全域狀態
+    // 全域狀態 (包含排序與複選設定)
     let state = {
       chemicals: [...defaultChemicals],
       inventoryData: [],
@@ -474,7 +508,8 @@
       chartInstance: null,
       trendChartInstance: null,
       selectedRecordIds: new Set(),
-      showCompliance: true
+      showCompliance: true,
+      isAdmin: false // 管理者權限狀態
     };
 
     // --- STREAMING_CHUNK:Local storage and DOM setup... ---
@@ -554,7 +589,20 @@
       modalProjected: document.getElementById('modalProjected'),
       modalExcess: document.getElementById('modalExcess'),
       btnCancelSave: document.getElementById('btnCancelSave'),
-      btnForceSave: document.getElementById('btnForceSave')
+      btnForceSave: document.getElementById('btnForceSave'),
+      
+      // 管理者區塊 DOM
+      btnAdminLogin: document.getElementById('btnAdminLogin'),
+      adminLockIcon: document.getElementById('adminLockIcon'),
+      btnImportContainer: document.getElementById('btnImportContainer'),
+      adminModal: document.getElementById('adminModal'),
+      adminModalTitle: document.getElementById('adminModalTitle'),
+      adminLoginSection: document.getElementById('adminLoginSection'),
+      adminPasswordInput: document.getElementById('adminPasswordInput'),
+      adminAuthError: document.getElementById('adminAuthError'),
+      adminLogoutSection: document.getElementById('adminLogoutSection'),
+      btnCancelAdmin: document.getElementById('btnCancelAdmin'),
+      btnSubmitAdmin: document.getElementById('btnSubmitAdmin')
     };
 
     // --- STREAMING_CHUNK:Filtering and Initialization... ---
@@ -587,10 +635,36 @@
       DOM.filterStart.value = state.filters.startDate;
       DOM.filterEnd.value = state.filters.endDate;
 
+      // 檢查管理者登入狀態 (Session)
+      if (sessionStorage.getItem('bml_is_admin') === 'true') {
+        state.isAdmin = true;
+      }
+      updateAdminUI();
+
+      // 行動裝置判斷：隱藏電腦版的 LINE 分享按鈕
+      const isMobileDevice = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (!isMobileDevice) {
+        DOM.btnShareLine.style.display = 'none';
+      }
+
       updateFilterDropdowns();
       initMultiChemSelect();
       attachEventListeners();
       processData();
+    }
+
+    // --- 管理者 UI 更新 ---
+    function updateAdminUI() {
+      if (state.isAdmin) {
+        DOM.adminLockIcon.setAttribute('data-lucide', 'unlock');
+        DOM.btnImportContainer.classList.remove('admin-hidden');
+        DOM.btnExportExcel.classList.remove('admin-hidden');
+      } else {
+        DOM.adminLockIcon.setAttribute('data-lucide', 'lock');
+        DOM.btnImportContainer.classList.add('admin-hidden');
+        DOM.btnExportExcel.classList.add('admin-hidden');
+      }
+      if(window.lucide) lucide.createIcons();
     }
 
     function initMultiChemSelect() {
@@ -1319,6 +1393,55 @@
 
       DOM.btnCancelSave.addEventListener('click', () => { DOM.warningModal.classList.remove('flex'); DOM.warningModal.classList.add('hidden'); });
       DOM.btnForceSave.addEventListener('click', () => { if(state.pendingSaveAction) state.pendingSaveAction(); });
+
+      // 管理者模態框事件
+      DOM.btnAdminLogin.addEventListener('click', () => {
+        if (state.isAdmin) {
+          DOM.adminModalTitle.innerText = '管理者登出';
+          DOM.adminLoginSection.classList.add('hidden');
+          DOM.adminLogoutSection.classList.remove('hidden');
+        } else {
+          DOM.adminModalTitle.innerText = '管理者登入';
+          DOM.adminLoginSection.classList.remove('hidden');
+          DOM.adminLogoutSection.classList.add('hidden');
+          DOM.adminPasswordInput.value = '';
+          DOM.adminAuthError.classList.add('hidden');
+        }
+        DOM.adminModal.classList.remove('hidden');
+        DOM.adminModal.classList.add('flex');
+        if(!state.isAdmin) DOM.adminPasswordInput.focus();
+      });
+
+      DOM.btnCancelAdmin.addEventListener('click', () => {
+        DOM.adminModal.classList.add('hidden');
+        DOM.adminModal.classList.remove('flex');
+      });
+
+      DOM.btnSubmitAdmin.addEventListener('click', () => {
+        if (state.isAdmin) {
+          // 執行登出
+          state.isAdmin = false;
+          sessionStorage.setItem('bml_is_admin', 'false');
+          updateAdminUI();
+          DOM.adminModal.classList.add('hidden');
+          DOM.adminModal.classList.remove('flex');
+        } else {
+          // 執行登入校驗
+          if (DOM.adminPasswordInput.value === 'BMLPAE2') { 
+            state.isAdmin = true;
+            sessionStorage.setItem('bml_is_admin', 'true');
+            updateAdminUI();
+            DOM.adminModal.classList.add('hidden');
+            DOM.adminModal.classList.remove('flex');
+          } else {
+            DOM.adminAuthError.classList.remove('hidden');
+          }
+        }
+      });
+      
+      DOM.adminPasswordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') DOM.btnSubmitAdmin.click();
+      });
 
       DOM.filterStart.addEventListener('change', window.applyFilters);
       DOM.filterEnd.addEventListener('change', window.applyFilters);
