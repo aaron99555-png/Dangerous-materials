@@ -1224,7 +1224,34 @@
             tooltip: { callbacks: { label: c => c.dataset.type === 'bar' ? `${c.dataset.label}: ${c.parsed.y.toFixed(2)} 倍` : '' } }
           },
           scales: { y: { beginAtZero: true, grace: '30%', suggestedMax: maxLimitForScale, title: { display: true, text: '總倍數' } }, x: { title: { display: false } } }
-        }
+        },
+        // 加入專屬的自訂外掛，將數值繪製在柱狀圖上方
+        plugins: [{
+          id: 'trendBarLabelPlugin',
+          afterDatasetsDraw(chart) {
+            const { ctx } = chart;
+            chart.data.datasets.forEach((dataset, i) => {
+              if (dataset.type === 'bar') {
+                const meta = chart.getDatasetMeta(i);
+                meta.data.forEach((bar, index) => {
+                  const val = dataset.data[index];
+                  // 只有數值大於 0 時才顯示標籤
+                  if (val > 0) {
+                    ctx.save();
+                    // 設定字體樣式與顏色 (與柱狀圖顏色一致)
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.fillStyle = dataset.backgroundColor;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    // 在柱狀體正上方 (y - 4px) 繪製小數點後兩位的數值
+                    ctx.fillText(val.toFixed(2), bar.x, bar.y - 4);
+                    ctx.restore();
+                  }
+                });
+              }
+            });
+          }
+        }]
       });
     }
 
