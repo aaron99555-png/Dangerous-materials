@@ -86,6 +86,25 @@
     </div>
   </div>
 
+  <!-- 重複資料確認 Modal -->
+  <div id="duplicateModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-[100] backdrop-blur-sm p-4">
+    <div class="bg-white rounded-xl shadow-2xl p-5 md:p-6 w-full max-w-md border-t-4 border-amber-500">
+      <div class="flex items-center gap-3 text-amber-600 mb-4">
+        <i data-lucide="help-circle" class="w-6 h-6 shrink-0"></i>
+        <h3 class="text-base md:text-lg font-bold">重複資料確認</h3>
+      </div>
+      <p class="text-slate-700 font-medium mb-4 text-sm md:text-base">
+        系統偵測到今天已輸入過完全相同的紀錄：<br>
+        <span id="dupModalMsg" class="font-semibold text-amber-700 mt-2 block bg-amber-50 p-3 rounded border border-amber-200 leading-relaxed"></span><br>
+        請問確定要再次新增這筆資料嗎？
+      </p>
+      <div class="flex flex-col-reverse md:flex-row justify-end gap-3 mt-2">
+        <button id="btnCancelDup" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md transition-colors font-medium text-sm md:text-base">取消</button>
+        <button id="btnConfirmDup" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-md transition-colors font-medium shadow-sm text-sm md:text-base">確定新增</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Header (Sticky) -->
   <header class="sticky top-0 shrink-0 bg-benq-main text-white px-4 md:px-6 py-3 md:py-4 shadow-md flex flex-col sm:flex-row justify-between items-center z-50 gap-2 sm:gap-0">
     <div class="flex items-center gap-2 md:gap-3 w-full sm:w-auto justify-center sm:justify-start">
@@ -591,6 +610,12 @@
       btnCancelSave: document.getElementById('btnCancelSave'),
       btnForceSave: document.getElementById('btnForceSave'),
       
+      // 重複資料確認
+      duplicateModal: document.getElementById('duplicateModal'),
+      dupModalMsg: document.getElementById('dupModalMsg'),
+      btnCancelDup: document.getElementById('btnCancelDup'),
+      btnConfirmDup: document.getElementById('btnConfirmDup'),
+
       // 管理者區塊 DOM
       btnAdminLogin: document.getElementById('btnAdminLogin'),
       adminLockIcon: document.getElementById('adminLockIcon'),
@@ -1357,8 +1382,53 @@
       document.getElementById('inputForm').addEventListener('submit', (e) => {
         e.preventDefault();
         state.formData.date = DOM.inputDate.value; state.formData.storageAmt = DOM.inputStorageAmt.value;
-        if (!DOM.inputLocation.value || !state.formData.date || !state.formData.chemId || !state.formData.storageAmt) return alert('請填寫完整資料 (請先選擇區域與化學品)');
+        
+        // 改善防呆提示 (不使用原生的 alert，改用按鈕變色)
+        if (!DOM.inputLocation.value || !state.formData.date || !state.formData.chemId || !state.formData.storageAmt) {
+            const originalText = DOM.btnSubmit.innerText;
+            DOM.btnSubmit.innerText = '請選擇完整的區域與化學品！';
+            DOM.btnSubmit.classList.replace('bg-benq-main', 'bg-red-500');
+            setTimeout(() => {
+                DOM.btnSubmit.innerText = originalText;
+                DOM.btnSubmit.classList.replace('bg-red-500', 'bg-benq-main');
+            }, 2000);
+            return;
+        }
 
+        const inputAmt = parseFloat(state.formData.storageAmt);
+        
+        // 檢查是否完全重複 (同日期、同化學品(連動同區域)、同數量)
+        const isDuplicate = state.inventoryData.some(item => 
+            item.id !== state.editingId && // 編輯自身時不跳警告
+            item.date === state.formData.date &&
+            item.chemId === state.formData.chemId &&
+            item.storageAmt === inputAmt
+        );
+
+        if (isDuplicate) {
+            const chem = state.chemicals.find(c => c.id === state.formData.chemId);
+            DOM.dupModalMsg.innerHTML = `日期：${state.formData.date}<br>區域：${DOM.inputLocation.value}<br>化學品：${chem.name}<br>數量：${inputAmt} kg/L`;
+            DOM.duplicateModal.classList.remove('hidden');
+            DOM.duplicateModal.classList.add('flex');
+            return; // 暫停，等待使用者按鈕確認
+        }
+
+        // 若無重複，則繼續進行超標檢核與儲存
+        proceedToValidationAndSave();
+      });
+
+      // 重複確認 Modal 按鈕事件
+      DOM.btnCancelDup.addEventListener('click', () => { 
+        DOM.duplicateModal.classList.remove('flex'); 
+        DOM.duplicateModal.classList.add('hidden'); 
+      });
+      DOM.btnConfirmDup.addEventListener('click', () => { 
+        DOM.duplicateModal.classList.remove('flex'); 
+        DOM.duplicateModal.classList.add('hidden'); 
+        proceedToValidationAndSave(); 
+      });
+
+      function proceedToValidationAndSave() {
         const chem = state.chemicals.find(c => c.id === state.formData.chemId);
         const ruleLocGroup = chem.location.includes('原膠室') ? '原膠室(C4+P1)' : chem.location;
         const rules = applicationRules[ruleLocGroup] || [];
@@ -1389,7 +1459,7 @@
           }
         }
         executeSave();
-      });
+      }
 
       DOM.btnCancelSave.addEventListener('click', () => { DOM.warningModal.classList.remove('flex'); DOM.warningModal.classList.add('hidden'); });
       DOM.btnForceSave.addEventListener('click', () => { if(state.pendingSaveAction) state.pendingSaveAction(); });
