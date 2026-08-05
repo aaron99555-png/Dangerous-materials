@@ -458,18 +458,26 @@
       { name: 'GRANDIC PC 4900LT', category: '添加劑', petroleumClass: '第一石油類', flashPoint: '-4', controlAmt: 200 },
       { name: 'CA-190T', category: '添加劑', petroleumClass: '第一石油類', flashPoint: '4', controlAmt: 200 },
       { name: 'C0301廢棄物(第一石油類)', category: 'C0301廢棄物(第一石油類)', petroleumClass: '第一石油類', flashPoint: '4.4', controlAmt: 200 },
-      { name: 'BYKETOL-SPECIAL', category: '添加劑', petroleumClass: '第二石油類', flashPoint: '43', controlAmt: 1000 }
+      { name: 'BYKETOL-SPECIAL', category: '添加劑', petroleumClass: '第二石油類', flashPoint: '43', controlAmt: 1000 },
+      { name: '環戊酮', category: '添加劑', petroleumClass: '第二石油類', flashPoint: '26', controlAmt: 1000 }
     ];
 
     const defaultChemicals = [];
     let chemIdCounter = 1;
     ['危險品庫房', '原膠室(C4)', '原膠室(P1)'].forEach(loc => {
       baseChemicals.forEach(c => {
+        let cat = c.category;
+        // 針對 PSA 廢膠在不同區域的歸類進行特例處理
+        // 原膠室內屬「感壓膠」，危險品庫房內則精準歸為「C0301廢棄物(第二石油類)」
+        if (c.name === 'PSA廢膠' && loc === '危險品庫房') {
+          cat = 'C0301廢棄物(第二石油類)';
+        }
+
         defaultChemicals.push({
           id: String(chemIdCounter++),
           name: c.name,
           location: loc,
-          category: c.category,
+          category: cat,
           petroleumClass: c.petroleumClass,
           flashPoint: c.flashPoint,
           controlAmt: c.controlAmt
